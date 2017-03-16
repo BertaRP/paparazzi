@@ -54,6 +54,9 @@
 		<module name="cv_colorfilter">
 			<define name="COLORFILTER_CAMERA" value="front_camera" />
 		</module>
+		<module name="cv_opencvdemo.xml">
+			<define name="OPENCVDEMO_CAMERA" value="front_camera"/>
+		</module>
 		<module name="orange_avoider" />
 		<module name="video_rtp_stream">
 			<configure name="VIEWVIDEO_HOST" value="192.168.42.65" />
