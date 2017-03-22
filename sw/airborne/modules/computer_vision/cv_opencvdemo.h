@@ -28,6 +28,6 @@
 
 extern void opencvdemo_init(void);
 
-#endif
+/* 
 
 

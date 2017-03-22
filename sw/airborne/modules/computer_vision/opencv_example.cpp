@@ -26,13 +26,23 @@
 
 #include "opencv_example.h"
 
-
-
 using namespace std;
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 using namespace cv;
 #include "opencv_image_functions.h"
+
+
+
+
+/* =======================================================================================================================================
+ =======================================================================================================================================*/
+
+
+/* =======================================================================================================================================
+ =======================================================================================================================================*/
+
+
 
 int opencv_example(char *img, int width, int height)
 {
@@ -53,7 +63,10 @@ int opencv_example(char *img, int width, int height)
 
   // Convert back to YUV422, and put it in place of the original image
 //  grayscale_opencv_to_yuv422(image, img, width, height);
-  colorrgb_opencv_to_yuv422(image, img, width, height);
+  colorrgb_opencv_to_yuv422(image, img);
 
   return 0;
 }
+
+
+/*
