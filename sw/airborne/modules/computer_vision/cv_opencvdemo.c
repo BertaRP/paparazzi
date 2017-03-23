@@ -28,6 +28,26 @@
 #include "modules/computer_vision/opencv_example.h"
 
 
+/* =======================================================================================================================================
+ =======================================================================================================================================*/
+
+// Definition of the output (to get the old image and corners for next iteration)
+typedef struct opticFlow_output{
+    Mat gray_blurred_0;
+    Mat tracking_pts_0;
+} opticFlow_output;
+
+// Allocate the pointer with the size of the structure
+opticFlow_output *out_ptr = (opticFlow_output *)malloc(sizeof(opticFlow_output));
+
+// Listeners for the video camera
+struct video_listener *listener_init     = NULL;
+struct video_listener *listener_periodic = NULL;
+
+/* =======================================================================================================================================
+ =======================================================================================================================================*/
+
+
 // Function
 struct image_t* opencv_func(struct image_t* img);
 struct image_t* opencv_func(struct image_t* img)
@@ -48,4 +68,11 @@ void opencvdemo_init(void)
 {
   cv_add_to_device(&OPENCVDEMO_CAMERA, opencv_func);
 }
+
+
+/* =======================================================================================================================================
+ =======================================================================================================================================*/
+/*
+    
+
 
