@@ -5,27 +5,52 @@
  */
 
 #include "opencv_example.h"
-
-using namespace std;
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-using namespace cv;
 #include "opencv_image_functions.h"
 #include <cmath.h>
 
+using namespace std;
+using namespace cv;
+
+// Refresh rate of the pipeline
+#define REFRESH_RATE 30 // fps
+
+// Blur parameter
+#define KERNEL_SIZE 29
+
+// Background substraction parameters
+#define HISTORY 1
+#define VAR_THRESHOLD 60
+#define DETECT_SHADOWS FALSE
+
+// Corner detection parameters
+#define MAX_CORNERS 1000
+#define QUALITY_LEVEL 0.01
+#define MIN_DISTANCE 7
+#define BLOCK_SIZE 7
+#define HARRIS_DETECTOR FALSE
+#define K_HARRIS 0.04
+
+// Optic Flow parameters
+#define MAX_LEVEL 3;
+#define FLAGS 0;
+#define MIN_EIG_THRESHOLD 0.0001;
+static const TermCriteria criteria = Termcriteria(Termcriteria::COUNT + TermCriteria::EPS, 30, 0.01); // Termination criteria (iterations, delta)
+static const Size winSize = (13,13);
 
 
 // Global variables
 Ptr<BackgroundSubtractor> pMOG2;
 
-Mat tracking_pts_0;
+vector<Point2f> tracking_pts_0;
 Mat gray_blurred_0;
 
 /* =======================================================================================================================================
  =======================================================================================================================================*/
 
 
-void image_pipeline(char* img, double* times2contact)
+void image_pipeline(char* img, int width, int height, double* times2contact)
 {
 
     /* Periodic function to compute the optical flow in an outer loop:
@@ -43,49 +68,53 @@ void image_pipeline(char* img, double* times2contact)
     Mat median;
     Mat gray_blurred;
     Mat fgmask;
-    Mat new_corners;
-    Mat tracking_pts;
+    vector<Point2f> new_corners;
+    vector<Point2f> tracking_pts;
+    double *time_vector;
 
-    Mat image(CV_8UC2, img);    // Implement image pipeline
+    // Conver image buffer to Mat
+    Mat image(width, height, CV_8UC2, img);
         
     // Blurs the image with a median filter
-    median = medianBlurring(Mat image);
+    median = medianBlurring(image);
     
     // Convert the blurred image to grayscale
-    gray_blurred = grayScl(Mat median);
+    gray_blurred = grayScl(median);
 
     // Compute the foreground mask
-    fgmask = fgbgMOG2(Mat median);
+    fgmask = fgbgMOG2(median);
     
     // Compute the optical flow in the blurred, grayscale image
-    tracking_pts = fgbgOpticFlow(Mat gray_blurred, Mat gray_blurred_0, Mat tracking_pts_0);
+    tracking_pts = fgbgOpticFlow(gray_blurred, gray_blurred_0, tracking_pts_0);
     
     // Time to contact (or any other decision maker)
-    time_vector = time2contact(Mat tracking_pts_0, Mat tracking_pts, Mat gray_blurred);
+    time_vector = time2contact(tracking_pts_0, tracking_pts, gray_blurred);
 
     // Convert the time_vector to a matrix
-    // blablabla
+    save_times2contact(tracking_pts, time_vector, times2contact, width, height)
     
     // Detects the new corners on the image (Shi-Tomasi)
-    new_corners = cornerDetection(Mat gray_blurred, Mat fgmask);
+    new_corners = cornerDetection(gray_blurred, fgmask);
 
+    // TODO: IT SHOULDN'T BE NECESSARY (MIGHT BE THOUGH)
     // Swap tracking_pts_0 and gray_blurred_0 with current ones
-    tracking_pts_0.reshape(new_corners.channels,new_corners.rows);
-    gray_blurred_0.reshape(gray_blurred.channels,gray_blurred.rows);
+    //tracking_pts_0.reshape(new_corners.channels,new_corners.rows);
+    //gray_blurred_0.reshape(gray_blurred.channels,gray_blurred.rows);
 
     tracking_pts_0 = new_corners;
     gray_blurred_0 = gray_blurred;
 
 }
 
-
-void image_pipeline_init(char *img)
+// Call this function on the first frame
+void image_pipeline_init(char* img, int width, int height)
 {
-    Mat image(CV_8UC2, img);
+    Mat image(width, height, CV_8UC2, img);
 
-    gray_blurred_0.reshape(image.channels,image.rows);
-    tracking_pts_0.reshape(image.channels,image.rows);
-
+    Mat median = medianBlurring(image);
+    gray_blurred_0 = grayScl(median);
+    Mat fgmask = fgbgMOG2(median);
+    tracking_pts_0 = cornerDetection(gray_blurred_0, fgmask);
 }
 
 /* =======================================================================================================================================
@@ -94,14 +123,11 @@ void image_pipeline_init(char *img)
 
 Mat medianBlurring(Mat image)
 {
-    // Variables
-    int kernel_size = 29;
-    
     // Output
     Mat median;
 
     // Blur it with a median filter (image == input, median == output, 3rd arg == size of kernel (ODD!!!!))
-    medianBlur(img, median, kernel_size);
+    medianBlur(image, median, KERNEL_SIZE);
     
     // Output
     return median;
@@ -128,17 +154,11 @@ Mat grayScl(Mat median)
 
 Mat fgbgMOG2(Mat median)
 {
-    // Variables
-    int     history       = 1;
-    double  varThreshold  = 60;
-    bool    detectShadows = false;
-    
     //Output
     Mat fgmask;
     
-    
     // Create the background subtractor
-    pMOG2 = createBackgroundSubtractorMOG2(history, varThreshold, detectShadows); //MOG2 approach
+    pMOG2 = createBackgroundSubtractorMOG2(HISTORY, VAR_THRESHOLD, DETECT_SHADOWS); //MOG2 approach
     
     // Create the foreground mask (median == input, fgmask == output)
     pMOG2->apply(median,fgmask);
@@ -153,24 +173,16 @@ Mat fgbgMOG2(Mat median)
 =======================================================================================================================================*/
 
 
-Mat cornerDetection(Mat gray_blurred, Mat fgmask)
-{
-    // Variables
-    int     maxCorners        = 1000;
-    double  qualityLevel      = 0.01;
-    double  minDistance       = 7;
-    int     blockSize         = 7;
-    bool    useHarrisDetector = false;
-    double  k_harris          = 0.04;
-    
+vector<Point2f> cornerDetection(Mat gray_blurred, Mat fgmask)
+{    
     // Output
-    Mat tracking_pts_0;
+    vector<Point2f> new_corners;
 
     // Find corners
-    goodFeaturesToTrack(gray_blurred, tracking_pts_0, maxCorners, qualityLevel, minDistance, mask = fgmask, blockSize, useHarrisDetector, k_harris);
+    goodFeaturesToTrack(gray_blurred, new_corners, MAX_CORNERS, QUALITY_LEVEL, MIN_DISTANCE, fgmask, BLOCK_SIZE, HARRIS_DETECTOR, K_HARRIS);
     
     // Output
-    return tracking_pts_0;
+    return new_corners;
 }
 
 
@@ -178,22 +190,17 @@ Mat cornerDetection(Mat gray_blurred, Mat fgmask)
  =======================================================================================================================================*/
 
 
-Mat fgbgOpticFlow(Mat gray_blurred, Mat gray_blurred_0, Mat tracking_pts_0)
+vector<Point2f> fgbgOpticFlow(Mat gray_blurred, Mat gray_blurred_0, vector<Point2f> tracking_pts_0)
 {
     // Variables
-    Mat          status;
-    Mat          err;
-    Size         winSize         = (13,13);
-    int          maxLevel        =  3;
-    TermCriteria criteria        = Termcriteria(Termcriteria::COUNT + TermCriteria::EPS, 30, 0.01); // Termination criteria (iterations, delta)
-    int          flags           = 0;
-    double       minEigThreshold = 0.0001;
+    vector<unsigned char> status;
+    vector<int> err;
     
     // Output
-    Mat tracking_pts;
+    vector<Point2f> tracking_pts;
     
     // Optical flow (Lucas-Kanade)
-    calcOpticalFlowPyrLK(gray_blurred_0, gray_blurred, tracking_pts_0, tracking_pts, status, err, winSize, maxLevel, criteria, flags, minEigThreshold);
+    calcOpticalFlowPyrLK(gray_blurred_0, gray_blurred, tracking_pts_0, tracking_pts, status, err, winSize, MAX_LEVEL, criteria, FLAGS, MIN_EIG_THRESHOLD);
     
     // Output
     return tracking_pts;
@@ -203,13 +210,13 @@ Mat fgbgOpticFlow(Mat gray_blurred, Mat gray_blurred_0, Mat tracking_pts_0)
 /* =======================================================================================================================================
  =======================================================================================================================================*/
 
-double time2contact(Mat tracking_pts_0, Mat tracking_pts, Mat gray_blurred)
+double *time2contact(vector<Point2f> tracking_pts_0, vector<Point2f> tracking_pts, Mat gray_blurred)
 {
 /* This function computes the time to contact given the tracking points (corners) of the previous frame and 
  the points returned by the optical flow calculation for the current frame. 
  
- This is the actual time to contact since it is multiplied by the refresh rate of the function (15 Hz). If this 
- changes, be aware that in "time[idx2] = distance/velocity * 15", 15 should be changed to the new refresh rate. 
+ This is the actual time to contact since it is multiplied by the refresh rate of the function (REFRESH_RATE Hz). If this 
+ changes, be aware that in "time[idx2] = distance/velocity * REFRESH_RATE", REFRESH_RATE should be changed to the new refresh rate. 
  */
     
     int width  = gray_blurred.cols;             // width of the image
@@ -217,131 +224,38 @@ double time2contact(Mat tracking_pts_0, Mat tracking_pts, Mat gray_blurred)
     double center[2];                           // position of the center of the image
     double position_x, position_y, distance;    // posision components and distance (module of the position)
     double velocity_x, velocity_y, velocity;    // velocity components and module of the velocity
-    double time_vector[height];                        // Time to contact [s]
+    double time_vector[tracking_pts.size()];                  // Time to contact [s]
        
     // Calculate the position of the center of the image
     center   = {0.5 * width, 0.5 * height};
     
-    // Time to contact calculation (distance/velocity) * frequency
-    for (int idx = 0; idx = tracking_pts_0.rows; idx++)
+    for (int i = 0; i < tracking_pts_0.size(); ++i)
     {
-        for (int idx2 = 0; idx2 = tracking_pts.cols; idx2++)
-            {
-                position_x = center[0] - tracking_pts_0[0][idx2];
-                position_y = center[1] - tracking_pts_0[idx][1];
-                
-                distance = hypot(position_x, position_y);
-                
-                velocity_x = tracking_pts[0][idx2] - tracking_pts_0[0][idx2];
-                velocity_y = tracking_pts[idx][1] - tracking_pts_0[idx][1];
-                
-                velocity = hypot(velocity_x,velocity_y);
-                
-                time_vector[idx2] = distance/velocity * 15;
-            }
+        position_x = center[0] - tracking_pts_0[i].x;
+        position_y = center[1] - tracking_pts_0[i].y;
+
+        distance = hypot(position_x,position_y);
+
+        velocity_x = tracking_pts[i].x - tracking_pts_0[i].x;
+        velocity_y = tracking_pts[i].y - tracking_pts_0[i].y;
+
+        velocity = hypot(velocity_x,velocity_y);
+
+        time_vector[i] = (distance/velocity) * REFRESH_RATE;
     }
         
     return time_vector; 
-    
 }
 
-
-/* =======================================================================================================================================
- =======================================================================================================================================*/
-
-
-void opticFlow_init(struct image_t* img)
+void save_times2contact(vector<Point2f> tracking_pts, double *time_vector, double* times2contact, int width, int height)
 {
-    /* Function to initialize the optical flow process:
-     .- Blur the image
-     .- Converts it to grayscale
-     .- Create foreground mask (foreground-background segmentation)
-     .- Corner detection
-     .- Saves all to a pointer to be used for the opticFlow_periodic function
-     */
-    
-    Mat median_0;
-    Mat gray_blurred_0;
-    Mat fgmask;
-    Mat tracking_pts_0;
+    // All points are -1 but the ones on tracking pts
+    memset(times2contact, -1, width*height*sizeof(double));
 
-
-    // Blurs the image with a median filter --> Output = median
-    median_0 = medianBlurring(char *img);
-    
-    // Convert the blurred image to grayscale --> Output = gray_blurred
-    gray_blurred_0 = grayScl(Mat median_0);
-    
-    // Creates a foreground mask via background segmentation --> Output = fgmask
-    fgmask = fgbgMOG2(Mat median_0);
-    
-    // Detects the corners on the image (Shi-Tomasi) --> Ouput = tracking_pts_0
-    tracking_pts_0 = cornerDetection(Mat gray_blurred, Mat fgmask);
-    
-    // Output structure
-    opticFlow_output.gray_blurred_0 = gray_blurred_0; // Current image
-    opticFlow_output.tracking_pts_0 = tracking_pts_0; // Current corners
-    
-    
+    for (int i = 0; i < tracking_pts.size(); ++i)
+    {
+        int x = tracking_pts[i].x;
+        int y = tracking_pts[i].y;
+        times2contact[width*x+y] = time_vector[i];
+    } 
 }
-
-/* =======================================================================================================================================
- =======================================================================================================================================*/
-
-
-
-int opticFlow_periodic(struct image_t* img);
-{
-    /* Periodic function to compute the optical flow in an outer loop:
-     .- Gets the old image and tracking points (from last frame)
-     .- Blur the image
-     .- Converts it to grayscale
-     .- Create foreground mask (foreground-background segmentation)
-     .- Compute optical flow (returns the moving points in the image)
-     .- Time2contact
-     .- Determine heading direction depending on the time to contact
-     .- Recompute the corners--> save corners and current frame to the output to be used in the next iteration
-     .- Returns the heading decision (e.g. 0: far left, 1: left, 2: center, 3: right, 4: far right)
-     */
-    
-    Mat median;
-    Mat gray_blurred;
-    Mat fgmask;
-    Mat tracking_pts_0;
-    Mat gray_blurred_0;
-    Mat new_corners;
-    
-    
-    // Output
-    int heading_decision;
-    
-    tracking_pts_0 = opticFlow_out.tracking_pts_0;
-    gray_blurred_0 = opticFlow_out.gray_blurred_0;
-    
-    
-    // Blurs the image with a median filter --> Output = median
-    median = medianBlurring(char *img);
-    
-    // Convert the blurred image to grayscale --> Output = gray_blurred
-    gray_blurred = grayScl(Mat median);
-    
-    // Compute the optical flow in the blurred, grayscale image
-    tracking_pts = fgbgOpticFlow(Mat gray_blurred, Mat gray_blurred_0, Mat tracking_pts_0);
-    
-    // Time to contact (or any other decision maker)
-    heading_decision = time2contact(Mat tracking_pts_0, Mat tracking_pts, Mat gray_blurred);
-    
-    // Recompute the foreground mask --> Output = fgmask
-    fgmask = fgbgMOG2(Mat median);
-    
-    // Detects the new corners on the image (Shi-Tomasi) --> Ouput = tracking_pts_0
-    new_corners = cornerDetection(Mat gray_blurred, Mat fgmask);
-    
-    // Output structure
-    opticFlow_out.gray_blurred_0 = gray_blurred_0; // Current image
-    opticFlow_out.tracking_pts_0 = new_corners;    // Current corners
-
-    
-    return heading_decision;
-}
-    

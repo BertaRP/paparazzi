@@ -9,10 +9,8 @@
 extern "C" {
 #endif
     
-    
-// Functions to be used by opticflow_calculator
-extern void opticFlow_init(struct image_t* img);
-extern void opticFlow_periodic(struct image_t* img);
+extern void image_pipeline(char* img, int width, int height, double* times2contact);
+extern void image_pipeline_init(char* img, int width, int height);
 
 #ifdef __cplusplus
 }

@@ -25,10 +25,11 @@
 #include "modules/computer_vision/opencv_example.h"
 #include <string.h>
 
-struct image_t* times2contact;
-// Listeners for the video camera
-//struct video_listener *listener_init     = NULL;
-//struct video_listener *listener_periodic = NULL;
+#define FRAME_RATE 1
+
+double *times2contact;
+int nFrame = 0;
+int start = 1;
 
 
 struct image_t* opencv_func(struct image_t* img);
@@ -41,8 +42,24 @@ struct image_t* opencv_func(struct image_t* img)
 
 	if (img->type == IMAGE_YUV422)
 	{
-		// Check types and shape of times2contact
-    	image_pipeline((char *) img->buf,(double *)times2contact->buf);
+		// If first time initialize times2contact to all -1
+		if (start)
+		{
+			int npixels = img->w*img->h;
+			times2contact = (double *)malloc(npixels*sizeof(double));
+			memset(times2contact, -1, npixels*sizeof(double));
+			image_pipeline_init((char *) img->buf, img->w, img->h);
+			start = 0;
+		}
+
+		if (nFrame % FRAME_RATE == 0)
+		{
+			// TODO: Check if necesary to give width and height
+    		image_pipeline((char *) img->buf, img->w, img->h, times2contact);
+		}
+
+    	// Add one to the frame count
+    	nFrame++;
     }
     return NULL;
 }
@@ -55,9 +72,8 @@ struct image_t* opencv_func(struct image_t* img)
 void opencvdemo_init(void)
 {
 
- 	// Init times2contact to be filled with -1 
- 	times2contact = (image_t *)malloc(sizeof(image_t));
- 	times2contact->buf = 
+ 	// Init times2contact
+ 	times2contact = NULL;
 
  	// Link image pipeline to "camera pipe" (Outputs a frame and executes the pipeline every frame)
     cv_add_to_device(&OPENCVDEMO_CAMERA, opencv_func);

@@ -2,8 +2,8 @@
  Finish header introduction
  */
 
-#ifndef OPTICFLOW_FGBG_H
-#define OPTICFLOW_FGBG_H
+#ifndef CV_OPENCVDEMO_H
+#define CV_OPENCVDEMO_H
 
 // Functions
 extern void opencv_func();
