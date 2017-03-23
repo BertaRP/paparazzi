@@ -32,7 +32,8 @@
 double *times2contact;
 int nFrame = 0;
 int start = 1;
-
+int width;
+int height;
 
 struct image_t* opencv_func(struct image_t* img);
 int take_decision_periodic(void);
@@ -49,6 +50,8 @@ struct image_t* opencv_func(struct image_t* img)
 		if (start)
 		{
 			int npixels = img->w*img->h;
+			width = img->w;
+			height = img->h;
 			times2contact = (double *)malloc(npixels*sizeof(double));
 			memset(times2contact, -1, npixels*sizeof(double));
 			image_pipeline_init((char *) img->buf, img->w, img->h);
@@ -101,6 +104,9 @@ int take_decision_periodic(void)
     // (heading_decision = -1 -> left, heading_decision = 0 -> center, heading_decision = 1 -> right)
     // (heading_decision = -2 -> sharp turn left, heading_decision = 2 -> sharp turn right)
     int heading_decision = 0;
+    int nC = 0;
+    int nR = 0;
+    int nL = 0;
 
 	for (int x = 0; x < width; ++x)
 	{
