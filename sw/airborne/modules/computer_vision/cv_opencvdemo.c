@@ -26,6 +26,8 @@
 #include <string.h>
 
 #define FRAME_RATE 1
+#define THRESHOLD_COUNT 10
+#define THRESHOLD_TIME 2
 
 double *times2contact;
 int nFrame = 0;
@@ -80,11 +82,8 @@ void opencvdemo_init(void)
     cv_add_to_device(&OPENCVDEMO_CAMERA, opencv_func);
 }
 
-int take_decision_periodic(void)
-{
-	/* BLANCA:
-	 Looks at times2contact and reaches a decision on where to move :)
-	 times2contact shape: 
+/* Looks at times2contact and reaches a decision on where to move :)
+	times2contact shape: 
  	|time1  time2  time3  time 4 |
  	|  .      .      .      .    |
  	|  .      .      .      .    |
@@ -95,9 +94,60 @@ int take_decision_periodic(void)
 	The times are placed in the exact pixels of the image --> make submatrices (I would start with 3) -->
 	find the minimum time of those submatrices --> DIRECTION TO AVOID! 
 	Points where the time to contact is calculated will be labeled as -1.
-	
-
 */
+int take_decision_periodic(void)
+{
+    // CHANGE THIS HEADING DECISION FOR A DECISION MAKER
+    // (heading_decision = -1 -> left, heading_decision = 0 -> center, heading_decision = 1 -> right)
+    // (heading_decision = -2 -> sharp turn left, heading_decision = 2 -> sharp turn right)
+    int heading_decision = 0;
 
-	return 0;
+	for (int x = 0; x < width; ++x)
+	{
+	    for (int y = 0; y = height; y++)
+	    {
+	        timep = times2contact[width*y+x];
+	        if (timep == -1)
+	        {
+	        	continue;
+	        }
+
+			if (timep <= THRESHOLD_TIME) 
+			{
+		    	if (x < width/3.0) {
+					nL++; 		// pixel in Left section
+		    	} else {
+					if (x < 2.0*width/3.0) 
+					{
+			    		nC++; 	// pixel in Center section
+		        	} else {
+			    		nR++; 	// pixel in Right section
+	    	    	}
+		    	}
+	  		}
+	    }
+	}
+
+    if (nC <= THRESHOLD_COUNT) { 
+		heading_decision = 0; 		// go straight
+    } else {
+		if (nR > nL) 
+		{
+	    	if (nL <= THRESHOLD_COUNT) 
+	    	{
+				heading_decision = -1; 	// turn left
+	    	} else {
+				heading_decision = -2; 	// trun sharply left
+	    	}
+		} else {
+	    	if (nR <= THRESHOLD_COUNT) 
+	    	{
+				heading_decision = 1; 	// turn right
+	    	} else {
+				heading_decision = 2; 	// trun sharply right
+	    	}
+		}
+    }
+    
+    return heading_decision;
 }
