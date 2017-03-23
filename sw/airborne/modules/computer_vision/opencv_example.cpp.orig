@@ -4,8 +4,6 @@
  
  */
 
-
-
 #include "opencv_example.h"
 #include <opencv2/video.hpp>
 #include <opencv2/core/core.hpp>
@@ -15,10 +13,7 @@
 
 
 using namespace std;
-
-
 using namespace cv;
-
 
 // Refresh rate of the pipeline
 #define REFRESH_RATE 30 // fps
@@ -64,7 +59,6 @@ void save_times2contact(vector<Point2f> tracking_pts, double *time_vector, doubl
 
 void image_pipeline(char* img, int width, int height, double* times2contact)
 {
-  
 
     /* Periodic function to compute the optical flow in an outer loop:
      .- Gets the old image and tracking points (from last frame)
@@ -221,10 +215,16 @@ vector<Point2f> fgbgOpticFlow(Mat gray_blurred, Mat gray_blurred_0, vector<Point
     return tracking_pts;
 }
 
+<<<<<<< HEAD
+=======
+  // Blur it, because we can
+  //blur(image, image, Size(5, 5));
+>>>>>>> mavlabCourse
 
 /* =======================================================================================================================================
  =======================================================================================================================================*/
 
+<<<<<<< HEAD
 double *time2contact(vector<Point2f> tracking_pts_0, vector<Point2f> tracking_pts, Mat gray_blurred)
 {
 /* This function computes the time to contact given the tracking points (corners) of the previous frame and 
@@ -254,6 +254,11 @@ double *time2contact(vector<Point2f> tracking_pts_0, vector<Point2f> tracking_pt
 
         velocity_x = tracking_pts[i].x - tracking_pts_0[i].x;
         velocity_y = tracking_pts[i].y - tracking_pts_0[i].y;
+=======
+  // Convert back to YUV422, and put it in place of the original image
+//  grayscale_opencv_to_yuv422(image, img, width, height);
+  //colorrgb_opencv_to_yuv422(image, img, width, height);
+>>>>>>> mavlabCourse
 
         velocity = hypot(velocity_x,velocity_y);
 

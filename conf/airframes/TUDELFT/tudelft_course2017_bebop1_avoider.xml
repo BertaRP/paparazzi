@@ -54,6 +54,9 @@
 		<module name="cv_colorfilter">
 			<define name="COLORFILTER_CAMERA" value="front_camera" />
 		</module>
+		<module name="cv_opencvdemo">
+<define name="OPENCVDEMO_CAMERA" value="front_camera" />
+		</module>
 		<module name="orange_avoider" />
 		<module name="cv_opencvdemo" >
 			<define name="OPENCVDEMO_CAMERA" value="front_camera" />
