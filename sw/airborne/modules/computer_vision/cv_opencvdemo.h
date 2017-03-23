@@ -6,8 +6,7 @@
 #define CV_OPENCVDEMO_H
 
 // Functions
-extern void opencv_func();
-extern void opencvdemo_init(void);
+void opencvdemo_init(void);
 
 // Variables
 

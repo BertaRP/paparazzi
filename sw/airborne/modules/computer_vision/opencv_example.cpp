@@ -5,10 +5,12 @@
  */
 
 #include "opencv_example.h"
+#include <opencv2/video.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include "opencv_image_functions.h"
-#include <cmath.h>
+#include <cmath>
+
 
 using namespace std;
 using namespace cv;
@@ -22,29 +24,34 @@ using namespace cv;
 // Background substraction parameters
 #define HISTORY 1
 #define VAR_THRESHOLD 60
-#define DETECT_SHADOWS FALSE
+static const bool detect_shadows = false;
 
 // Corner detection parameters
 #define MAX_CORNERS 1000
 #define QUALITY_LEVEL 0.01
 #define MIN_DISTANCE 7
 #define BLOCK_SIZE 7
-#define HARRIS_DETECTOR FALSE
+static const bool harris_detector = false;
 #define K_HARRIS 0.04
 
 // Optic Flow parameters
-#define MAX_LEVEL 3;
-#define FLAGS 0;
-#define MIN_EIG_THRESHOLD 0.0001;
-static const TermCriteria criteria = Termcriteria(Termcriteria::COUNT + TermCriteria::EPS, 30, 0.01); // Termination criteria (iterations, delta)
-static const Size winSize = (13,13);
-
-
-// Global variables
-Ptr<BackgroundSubtractor> pMOG2;
+#define MAX_LEVEL 3
+#define FLAGS 0
+#define MIN_EIG_THRESHOLD 0.0001
+static const TermCriteria criteria = TermCriteria(TermCriteria::COUNT + TermCriteria::EPS, 30, 0.01); // Termination criteria (iterations, delta)
+static const Size winSize = Size(13,13);
 
 vector<Point2f> tracking_pts_0;
 Mat gray_blurred_0;
+
+Mat medianBlurring(Mat image);
+Mat grayScl(Mat median);
+Mat fgbgMOG2(Mat median);
+vector<Point2f> cornerDetection(Mat gray_blurred, Mat fgmask);
+vector<Point2f> fgbgOpticFlow(Mat gray_blurred, Mat gray_blurred_0, vector<Point2f> tracking_pts_0);
+double *time2contact(vector<Point2f> tracking_pts_0, vector<Point2f> tracking_pts, Mat gray_blurred);
+void save_times2contact(vector<Point2f> tracking_pts, double *time_vector, double* times2contact, int width, int height);
+
 
 /* =======================================================================================================================================
  =======================================================================================================================================*/
@@ -91,7 +98,7 @@ void image_pipeline(char* img, int width, int height, double* times2contact)
     time_vector = time2contact(tracking_pts_0, tracking_pts, gray_blurred);
 
     // Convert the time_vector to a matrix
-    save_times2contact(tracking_pts, time_vector, times2contact, width, height)
+    save_times2contact(tracking_pts, time_vector, times2contact, width, height);
     
     // Detects the new corners on the image (Shi-Tomasi)
     new_corners = cornerDetection(gray_blurred, fgmask);
@@ -156,9 +163,11 @@ Mat fgbgMOG2(Mat median)
 {
     //Output
     Mat fgmask;
+
+    Ptr<BackgroundSubtractor> pMOG2;
     
     // Create the background subtractor
-    pMOG2 = createBackgroundSubtractorMOG2(HISTORY, VAR_THRESHOLD, DETECT_SHADOWS); //MOG2 approach
+    pMOG2 = createBackgroundSubtractorMOG2(HISTORY, VAR_THRESHOLD, detect_shadows); //MOG2 approach
     
     // Create the foreground mask (median == input, fgmask == output)
     pMOG2->apply(median,fgmask);
@@ -179,7 +188,7 @@ vector<Point2f> cornerDetection(Mat gray_blurred, Mat fgmask)
     vector<Point2f> new_corners;
 
     // Find corners
-    goodFeaturesToTrack(gray_blurred, new_corners, MAX_CORNERS, QUALITY_LEVEL, MIN_DISTANCE, fgmask, BLOCK_SIZE, HARRIS_DETECTOR, K_HARRIS);
+    goodFeaturesToTrack(gray_blurred, new_corners, MAX_CORNERS, QUALITY_LEVEL, MIN_DISTANCE, fgmask, BLOCK_SIZE, harris_detector, K_HARRIS);
     
     // Output
     return new_corners;
