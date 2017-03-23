@@ -86,48 +86,48 @@ void image_pipeline(char* img, int width, int height, double* times2contact)
     double *time_vector;
 
     // Conver image buffer to Mat
-    //Mat image(width, height, CV_8UC2, img);
+    Mat image(width, height, CV_8UC2, img);
         
     // Blurs the image with a median filter
-    //median = medianBlurring(image);
+    median = medianBlurring(image);
     
     // Convert the blurred image to grayscale
-    //gray_blurred = grayScl(median);
+    gray_blurred = grayScl(median);
 
     // Compute the foreground mask
-    //fgmask = fgbgMOG2(median);
+    fgmask = fgbgMOG2(median);
     
     // Compute the optical flow in the blurred, grayscale image
-    //tracking_pts = fgbgOpticFlow(gray_blurred, gray_blurred_0, tracking_pts_0);
+    tracking_pts = fgbgOpticFlow(gray_blurred, gray_blurred_0, tracking_pts_0);
     
     // Time to contact (or any other decision maker)
-    //time_vector = time2contact(tracking_pts_0, tracking_pts, gray_blurred);
+    time_vector = time2contact(tracking_pts_0, tracking_pts, gray_blurred);
 
     // Convert the time_vector to a matrix
-    //save_times2contact(tracking_pts, time_vector, times2contact, width, height);
+    save_times2contact(tracking_pts, time_vector, times2contact, width, height);
     
     // Detects the new corners on the image (Shi-Tomasi)
-    //new_corners = cornerDetection(gray_blurred, fgmask);
+    new_corners = cornerDetection(gray_blurred, fgmask);
 
     // TODO: IT SHOULDN'T BE NECESSARY (MIGHT BE THOUGH)
     // Swap tracking_pts_0 and gray_blurred_0 with current ones
     //tracking_pts_0.reshape(new_corners.channels,new_corners.rows);
     //gray_blurred_0.reshape(gray_blurred.channels,gray_blurred.rows);
 
-    //tracking_pts_0 = new_corners;
-    //gray_blurred_0 = gray_blurred;
+    tracking_pts_0 = new_corners;
+    gray_blurred_0 = gray_blurred;
 
 }
 
 // Call this function on the first frame
 void image_pipeline_init(char* img, int width, int height)
 {
-    //Mat image(width, height, CV_8UC2, img);
+    Mat image(width, height, CV_8UC2, img);
 
-    //Mat median = medianBlurring(image);
-    //gray_blurred_0 = grayScl(median);
-    //Mat fgmask = fgbgMOG2(median);
-    //tracking_pts_0 = cornerDetection(gray_blurred_0, fgmask);
+    Mat median = medianBlurring(image);
+    gray_blurred_0 = grayScl(median);
+    Mat fgmask = fgbgMOG2(median);
+    tracking_pts_0 = cornerDetection(gray_blurred_0, fgmask);
 }
 
 /* =======================================================================================================================================
@@ -140,7 +140,7 @@ Mat medianBlurring(Mat image)
     Mat median;
 
     // Blur it with a median filter (image == input, median == output, 3rd arg == size of kernel (ODD!!!!))
-    //medianBlur(image, median, KERNEL_SIZE);
+    medianBlur(image, median, KERNEL_SIZE);
     
     // Output
     return median;
@@ -239,7 +239,7 @@ double *time2contact(vector<Point2f> tracking_pts_0, vector<Point2f> tracking_pt
     double center[2];                           // position of the center of the image
     double position_x, position_y, distance;    // posision components and distance (module of the position)
     double velocity_x, velocity_y, velocity;    // velocity components and module of the velocity
-    double time_vector[tracking_pts.size()];                  // Time to contact [s]
+    double time_vector[tracking_pts.size()];    // Time to contact [s]
        
     // Calculate the position of the center of the image
     center[0] = 0.5 * width;

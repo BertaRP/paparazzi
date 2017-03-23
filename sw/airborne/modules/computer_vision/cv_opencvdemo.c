@@ -32,6 +32,9 @@ int nFrame = 0;
 int start = 1;
 
 
+struct image_t* opencv_func(struct image_t* img);
+int take_decision_periodic(void);
+
 /* =======================================================================================================================================
  =======================================================================================================================================*/
 
@@ -92,8 +95,9 @@ int take_decision_periodic(void)
 	The times are placed in the exact pixels of the image --> make submatrices (I would start with 3) -->
 	find the minimum time of those submatrices --> DIRECTION TO AVOID! 
 	Points where the time to contact is calculated will be labeled as -1.
+	
 
+*/
 
-/* =======================================================================================================================================
- =======================================================================================================================================*/
+	return 0;
 }
