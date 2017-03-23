@@ -1,4 +1,5 @@
-/*
+/* 
+
  * Copyright (C) C. De Wagter
  *
  * This file is part of paparazzi
@@ -28,6 +29,6 @@
 
 extern void opencvdemo_init(void);
 
-/* 
+#endif
 
 

@@ -32,5 +32,11 @@ extern "C" {
 
 int opencv_example(char *img, int width, int height);
 
-/*
+#ifdef __cplusplus
+}
+#endif
+
+#endif
+
+
 
