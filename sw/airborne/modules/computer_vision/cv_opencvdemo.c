@@ -1,78 +1,84 @@
-/*
- * Copyright (C) C. De Wagter
- *
- * This file is part of paparazzi
- *
- * paparazzi is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2, or (at your option)
- * any later version.
- *
- * paparazzi is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with paparazzi; see the file COPYING.  If not, see
- * <http://www.gnu.org/licenses/>.
- */
-/**
- * @file "modules/computer_vision/cv_opencvdemo.c"
- * @author C. De Wagter
- * A simple module showing what you can do with opencv on the bebop.
- */
+/* OPTICFLOW_FGBG
+ 
+ This module blabalbla finish this introduction
+ 
+ (INIT)
+ .- orange_avoider_init
+ .- blur (img) --> median_0
+ .- gray (median_0) --> gray_blurred_0
+ .- fgbgMOG2 (median_0) --> fgmask_0
+ .- cornerDetection (gray_blurred_0, fgmask_0) --> tracking_pts_0
+ 
+ (PERIODIC)
+ .- blur (img) --> median
+ .- gray (median) --> gray_blurred
+ .- opticFlow (gray_blurred, gray_blurred_0, tracking_pts_0) --> tracking_pts
+ .- time2contact (tracking_pts, tracking_pts_0) --> optical_flow_count
+ 
+ .- fgbgMOG2 (median) --> fgmask
+ .- cornerDetection (gray_blurred, fgmask) --> tracking_pts_0
+ 
+*/
 
 #include "modules/computer_vision/cv.h"
 #include "modules/computer_vision/cv_opencvdemo.h"
 #include "modules/computer_vision/opencv_example.h"
+#include <string.h>
 
-
-/* =======================================================================================================================================
- =======================================================================================================================================*/
-
-// Definition of the output (to get the old image and corners for next iteration)
-typedef struct opticFlow_output{
-    Mat gray_blurred_0;
-    Mat tracking_pts_0;
-} opticFlow_output;
-
-// Allocate the pointer with the size of the structure
-opticFlow_output *out_ptr = (opticFlow_output *)malloc(sizeof(opticFlow_output));
-
+struct image_t* times2contact;
 // Listeners for the video camera
-struct video_listener *listener_init     = NULL;
-struct video_listener *listener_periodic = NULL;
+//struct video_listener *listener_init     = NULL;
+//struct video_listener *listener_periodic = NULL;
+
+
+struct image_t* opencv_func(struct image_t* img);
 
 /* =======================================================================================================================================
  =======================================================================================================================================*/
 
-
-// Function
-struct image_t* opencv_func(struct image_t* img);
 struct image_t* opencv_func(struct image_t* img)
 {
 
-  if (img->type == IMAGE_YUV422)
-  {
-    // Call OpenCV (C++ from paparazzi C function)
-    opencv_example((char*) img->buf, img->w, img->h);
-  }
-
-// opencv_example(NULL, 10,10);
-
-  return NULL;
+	if (img->type == IMAGE_YUV422)
+	{
+		// Check types and shape of times2contact
+    	image_pipeline((char *) img->buf,(double *)times2contact->buf);
+    }
+    return NULL;
 }
 
-void opencvdemo_init(void)
-{
-  cv_add_to_device(&OPENCVDEMO_CAMERA, opencv_func);
-}
 
 
 /* =======================================================================================================================================
  =======================================================================================================================================*/
-/*
-    
 
+void opencvdemo_init(void)
+{
 
+ 	// Init times2contact to be filled with -1 
+ 	times2contact = (image_t *)malloc(sizeof(image_t));
+ 	times2contact->buf = 
+
+ 	// Link image pipeline to "camera pipe" (Outputs a frame and executes the pipeline every frame)
+    cv_add_to_device(&OPENCVDEMO_CAMERA, opencv_func);
+}
+
+int take_decision_periodic(void)
+{
+	/* BLANCA:
+	 Looks at times2contact and reaches a decision on where to move :)
+	 times2contact shape: 
+ 	|time1  time2  time3  time 4 |
+ 	|  .      .      .      .    |
+ 	|  .      .      .      .    |
+ 	|  .      .      .      .    |
+ 	|  .      .      .    time(n)|
+	
+
+	The times are placed in the exact pixels of the image --> make submatrices (I would start with 3) -->
+	find the minimum time of those submatrices --> DIRECTION TO AVOID! 
+	Points where the time to contact is calculated will be labeled as -1.
+
+}
+/* =======================================================================================================================================
+ =======================================================================================================================================*/
