@@ -1,0 +1,17 @@
+<!---Created by Group 10 AFMAV Course March 2016--->
+
+<!DOCTYPE module SYSTEM "module.dtd">
+
+<module name="variance_avoider" dir="group10">
+  <doc>
+    <description>Module to avoid surroundings with a low variance based on grayscale</description>
+  </doc>
+  <header>
+    <file name="variance_avoider.h"/>
+  </header>
+  <init fun="variance_avoider_init()"/>
+  <periodic fun="variance_avoider_periodic()" freq="4"/>
+  <makefile>
+    <file name="variance_avoider.c"/>
+  </makefile>
+</module>
