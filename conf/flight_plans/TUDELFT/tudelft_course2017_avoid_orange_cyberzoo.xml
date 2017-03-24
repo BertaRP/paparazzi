@@ -22,6 +22,7 @@
     <waypoint lat="51.990636" lon="4.376733" name="_OZ2"/>
     <waypoint lat="51.990671" lon="4.376806" name="_OZ3"/>
     <waypoint lat="51.990624" lon="4.376852" name="_OZ4"/>
+    <waypoint lat="51.990621" lon="4.376830" name="_OZ5" alt="10.0"/>
   </waypoints>
   <sectors>
     <sector color="red" name="CyberZoo">
@@ -35,6 +36,12 @@
       <corner name="_OZ2"/>
       <corner name="_OZ3"/>
       <corner name="_OZ4"/>
+    </sector>
+    <sector color="red" name="RandomSector">
+    <corner name="_CZ1"/>
+    <corner name="_CZ2"/>
+    <corner name="_OZ3"/>
+    <corner name="_OZ4"/>
     </sector>
   </sectors>
   <exceptions>

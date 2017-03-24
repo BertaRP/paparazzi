@@ -64,7 +64,10 @@
 			<define name="VIEWVIDEO_WRITE_VIDEO" value="FALSE" />
 			<define name="VIEWVIDEO_VIDEO_FILE" value="orangeAvoider" />
 			<define name="VIEWVIDEO_STREAM_VIDEO" value="TRUE" />
+		
 		</module>
+		<module name="variance_avoider"/>
+    		<module name="variance_calculator"/>
 	</modules>
 
 	<commands>
