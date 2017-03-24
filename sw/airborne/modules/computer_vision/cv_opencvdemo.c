@@ -36,7 +36,6 @@ int width;
 int height;
 
 struct image_t* opencv_func(struct image_t* img);
-int take_decision_periodic(void);
 
 /* =======================================================================================================================================
  =======================================================================================================================================*/
@@ -107,10 +106,11 @@ int take_decision_periodic(void)
     int nC = 0;
     int nR = 0;
     int nL = 0;
+    int timep;
 
 	for (int x = 0; x < width; ++x)
 	{
-	    for (int y = 0; y = height; y++)
+	    for (int y = 0; y < height; y++)
 	    {
 	        timep = times2contact[width*y+x];
 	        if (timep == -1)

@@ -7,12 +7,7 @@
 
 // Functions
 void opencvdemo_init(void);
-
-// Variables
-
-//extern struct video_listener *listener_init;
-//extern struct video_listener *listener_periodic;
-extern int heading_decision;
+int take_decision_periodic(void);
 
 
 #endif
