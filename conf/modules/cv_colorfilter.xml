@@ -10,12 +10,18 @@
     <dl_settings>
       <dl_settings NAME="ColorFilter">
          <dl_setting var="listener->active" min="0" step="1" max="1" shortname="active" />
-         <dl_setting var="color_lum_min" min="0" step="1" max="255" shortname="y_min" />
-         <dl_setting var="color_lum_max" min="0" step="1" max="255" shortname="y_max" />
-         <dl_setting var="color_cb_min"  min="0" step="1" max="255" shortname="u_min" />
-         <dl_setting var="color_cb_max"  min="0" step="1" max="255" shortname="u_max" />
-         <dl_setting var="color_cr_min"  min="0" step="1" max="255" shortname="v_min" />
-         <dl_setting var="color_cr_max"  min="0" step="1" max="255" shortname="v_max" />
+         <dl_setting var="color_lum_minO" min="0" step="1" max="255" shortname="y_min" />
+         <dl_setting var="color_lum_maxO" min="0" step="1" max="255" shortname="y_max" />
+         <dl_setting var="color_cb_minO"  min="0" step="1" max="255" shortname="u_min" />
+         <dl_setting var="color_cb_maxO"  min="0" step="1" max="255" shortname="u_max" />
+         <dl_setting var="color_cr_minO"  min="0" step="1" max="255" shortname="v_min" />
+         <dl_setting var="color_cr_maxO"  min="0" step="1" max="255" shortname="v_max" />
+         <dl_setting var="color_lum_minB" min="0" step="1" max="255" shortname="y_min" />
+         <dl_setting var="color_lum_maxB" min="0" step="1" max="255" shortname="y_max" />
+         <dl_setting var="color_cb_minB"  min="0" step="1" max="255" shortname="u_min" />
+         <dl_setting var="color_cb_maxB"  min="0" step="1" max="255" shortname="u_max" />
+         <dl_setting var="color_cr_minB"  min="0" step="1" max="255" shortname="v_min" />
+         <dl_setting var="color_cr_maxB"  min="0" step="1" max="255" shortname="v_max" />
       </dl_settings>
     </dl_settings>
   </settings>

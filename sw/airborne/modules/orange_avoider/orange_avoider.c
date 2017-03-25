@@ -40,13 +40,20 @@ float maxDistance               = 2.25;
  */
 void orange_avoider_init()
 {
+  // Initialise the variables of the colorfilter to accept black
+  color_lum_minB = 5;
+  color_lum_maxB = 20;
+  color_cb_minB  = 115;
+  color_cb_maxB  = 140;
+  color_cr_minB  = 115;
+  color_cr_maxB  = 140;
   // Initialise the variables of the colorfilter to accept orange
-  color_lum_min = 20;
-  color_lum_max = 255;
-  color_cb_min  = 75;
-  color_cb_max  = 145;
-  color_cr_min  = 167;
-  color_cr_max  = 255;
+  color_lum_minO = 20;
+  color_lum_maxO = 255;
+  color_cb_minO  = 75;
+  color_cb_maxO  = 145;
+  color_cr_minO  = 167;
+  color_cr_maxO  = 255;
   // Initialise random values
   srand(time(NULL));
   chooseRandomIncrementAvoidance();
@@ -59,8 +66,9 @@ void orange_avoider_periodic()
 {
   // Check the amount of orange. If this is above a threshold
   // you want to turn a certain amount of degrees
-  safeToGoForwards = color_count < tresholdColorCount;
-  VERBOSE_PRINT("Color_count: %d  threshold: %d safe: %d \n", color_count, tresholdColorCount, safeToGoForwards);
+  safeToGoForwards = color_countO < tresholdColorCount && color_countB < tresholdColorCount;
+  VERBOSE_PRINT("Color_count orange: %d  threshold: %d safe: %d \n", color_countO, tresholdColorCount, safeToGoForwards);
+  VERBOSE_PRINT("Color_count black: %d  threshold: %d safe: %d \n", color_countB, tresholdColorCount, safeToGoForwards);
   float moveDistance = fmin(maxDistance, 0.05 * trajectoryConfidence);
   if(safeToGoForwards){
       moveWaypointForward(WP_GOAL, moveDistance);
@@ -93,7 +101,7 @@ uint8_t increase_nav_heading(int32_t *heading, float incrementDegrees)
   // Check if your turn made it go out of bounds...
   INT32_ANGLE_NORMALIZE(newHeading); // HEADING HAS INT32_ANGLE_FRAC....
   *heading = newHeading;
-  VERBOSE_PRINT("Increasing heading to %f\n", ANGLE_FLOAT_OF_BFP(*heading) * 180 / M_PI);
+  //VERBOSE_PRINT("Increasing heading to %f\n", ANGLE_FLOAT_OF_BFP(*heading) * 180 / M_PI);
   return false;
 }
 
@@ -110,7 +118,7 @@ uint8_t calculateForwards(struct EnuCoor_i *new_coor, float distanceMeters)
   // Now determine where to place the waypoint you want to go to
   new_coor->x                       = pos->x + POS_BFP_OF_REAL(sin_heading * (distanceMeters));
   new_coor->y                       = pos->y + POS_BFP_OF_REAL(cos_heading * (distanceMeters));
-  VERBOSE_PRINT("Calculated %f m forward position. x: %f  y: %f based on pos(%f, %f) and heading(%f)\n", distanceMeters, POS_FLOAT_OF_BFP(new_coor->x), POS_FLOAT_OF_BFP(new_coor->y), POS_FLOAT_OF_BFP(pos->x), POS_FLOAT_OF_BFP(pos->y), ANGLE_FLOAT_OF_BFP(eulerAngles->psi)*180/M_PI);
+ // VERBOSE_PRINT("Calculated %f m forward position. x: %f  y: %f based on pos(%f, %f) and heading(%f)\n", distanceMeters, POS_FLOAT_OF_BFP(new_coor->x), POS_FLOAT_OF_BFP(new_coor->y), POS_FLOAT_OF_BFP(pos->x), POS_FLOAT_OF_BFP(pos->y), ANGLE_FLOAT_OF_BFP(eulerAngles->psi)*180/M_PI);
   return false;
 }
 
@@ -119,7 +127,7 @@ uint8_t calculateForwards(struct EnuCoor_i *new_coor, float distanceMeters)
  */
 uint8_t moveWaypoint(uint8_t waypoint, struct EnuCoor_i *new_coor)
 {
-  VERBOSE_PRINT("Moving waypoint %d to x:%f y:%f\n", waypoint, POS_FLOAT_OF_BFP(new_coor->x), POS_FLOAT_OF_BFP(new_coor->y));
+ // VERBOSE_PRINT("Moving waypoint %d to x:%f y:%f\n", waypoint, POS_FLOAT_OF_BFP(new_coor->x), POS_FLOAT_OF_BFP(new_coor->y));
   waypoint_set_xy_i(waypoint, new_coor->x, new_coor->y);
   return false;
 }
@@ -144,10 +152,10 @@ uint8_t chooseRandomIncrementAvoidance()
   int r = rand() % 2;
   if (r == 0) {
     incrementForAvoidance = 10.0;
-    VERBOSE_PRINT("Set avoidance increment to: %f\n", incrementForAvoidance);
+ //   VERBOSE_PRINT("Set avoidance increment to: %f\n", incrementForAvoidance);
   } else {
     incrementForAvoidance = -10.0;
-    VERBOSE_PRINT("Set avoidance increment to: %f\n", incrementForAvoidance);
+  //  VERBOSE_PRINT("Set avoidance increment to: %f\n", incrementForAvoidance);
   }
   return false;
 }
