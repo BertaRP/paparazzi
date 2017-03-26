@@ -29,7 +29,7 @@ extern uint8_t chooseEducatedIncrementAvoidance(int heading_decision);
 extern void chooseDecisionBasedOnOrange(void);
 extern void chooseDecisionBasedOnCorners(int heading_decision);
 
-extern int8 heading_decision;
+int8 heading_decision;
 
 #endif
 

@@ -320,6 +320,16 @@ double *time2contact(vector<Point2f>& tracking_pts_old, vector<Point2f>& trackin
             time_vector[i] = (distance/velocity) / REFRESH_RATE;
         }
     }
+
+    min_time2contact = time_vector[0];
+
+    for (int k = 1; k < time_vector.size(); ++k)
+        {
+            if (time_vector[k] < min_time2contact && time_vector[k] != -1)
+            {
+                min_time2contact = time_vector[k];
+            }
+        }    
         
     return time_vector; 
 }
