@@ -99,6 +99,11 @@ bool   autopilot_detect_ground_once;
 #endif
 
 
+/*************************** GROUP 5 TELEMETRY **************************************/
+#include "modules/orange_avoider/orange_avoider.h"
+/************************************************************************************/
+
+
 void send_autopilot_version(struct transport_tx *trans, struct link_device *dev)
 {
   static uint32_t ap_version = PPRZ_VERSION_INT;
@@ -239,6 +244,17 @@ static void send_rotorcraft_cmd(struct transport_tx *trans, struct link_device *
 }
 
 
+/***************************** TELEMETRY GROUP 5 **************************************
+   Group 5 Telemetry --> time2contact / heading_decision / colorcounts */
+static void send_telemetry_group5(struct transport_tx *trans, struct link_device *dev)
+{
+  pprz_msg_send_group5(trans, dev, AC_ID,
+                       heading_decision);
+}
+/************************************************************************************/
+
+
+
 void autopilot_init(void)
 {
   autopilot_motors_on = false;
@@ -273,6 +289,10 @@ void autopilot_init(void)
   register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_RC, send_rc);
   register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_ROTORCRAFT_RADIO_CONTROL, send_rotorcraft_rc);
 #endif
+
+/***************************** TELEMETRY GROUP 5 **************************************/
+  register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_SEND_GROUP5, send_telemetry_group5);
+
 }
 
 /** AP periodic call

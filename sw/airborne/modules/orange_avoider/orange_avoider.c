@@ -68,7 +68,7 @@ void take_decision_periodic()
 #if ORANGE_AVOIDER_CHECK
   int no_orange = orange_avoider_periodic();
 #endif
-  int heading_decision = corner_avoider_periodic();
+  heading_decision = corner_avoider_periodic();
   //VERBOSE_PRINT("Heading_decision: %d \n", heading_decision);
 
 
