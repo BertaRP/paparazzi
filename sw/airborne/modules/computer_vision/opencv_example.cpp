@@ -20,12 +20,15 @@
 using namespace std;
 using namespace cv;
 
+#define CANNY 1
+#define THRESHOLD_1 100
+#define THRESHOLD_2 200
 
 // Refresh rate of the pipeline
 #define REFRESH_RATE 30 // fps
 
 // Blur parameter
-#define KERNEL_SIZE 29
+#define KERNEL_SIZE 3
 
 // Background substraction parameters
 #define HISTORY 1
@@ -73,6 +76,7 @@ void save_times2contact(vector<Point2f>& tracking_pts, double *time_vector, doub
 vector<KeyPoint> FAST_detect(Mat& gray_blurred);
 void keypoints_in_image(Mat& gray_blurred, vector<KeyPoint> keypoints_fast);
 vector<Point2f> keypoints_to_array(vector<KeyPoint> keypoints_fast);
+vector<Point2f> edgesDetection(Mat& image, Mat& canny);
 
 
 /* =======================================================================================================================================
@@ -102,6 +106,7 @@ void image_pipeline(char* img, int width, int height, double* times2contact)
     vector<Point2f> tracking_pts;
     vector<KeyPoint> keypoints_fast;
     double *time_vector;
+    Mat canny;
 
     // Conver image buffer to Mat
     Mat M(height, width, CV_8UC2, img);
@@ -109,10 +114,10 @@ void image_pipeline(char* img, int width, int height, double* times2contact)
     cvtColor(M,image,CV_YUV2BGR_Y422);
 
     // Blurs the image with a median filter
-   // median = medianBlurring(image);
+   median = medianBlurring(image);
     //printf("Median\n");
     // Convert the blurred image to grayscale
-    gray_blurred = grayScl(image);
+    gray_blurred = grayScl(median);
     //printf("gray\n");
     // Compute the foreground mask
     //fgmask = fgbgMOG2(median);
@@ -135,20 +140,31 @@ void image_pipeline(char* img, int width, int height, double* times2contact)
     // Detects the new corners on the image (Shi-Tomasi) // FAST algorithm
     //printf("fgmask size:%d \n",fgmask.size());
     //new_corners = cornerDetection(gray_blurred, fgmask);
+
+#if CANNY
+    printf("Trying Canny\n");
+    new_corners = edgesDetection(gray_blurred,canny);
+    printf("Canny done\n");
+#else
     keypoints_fast = FAST_detect(gray_blurred);
 
-    // Convert the keypoints to an array
+    // Convert the keypoints to a vector
     new_corners = keypoints_to_array(keypoints_fast);
+    // Dray the keypoints in the image
+    keypoints_in_image(gray_blurred, keypoints_fast);
+#endif
 
     // Set the current corners and image as "old" values for next frame
     tracking_pts_0 = new_corners;
     gray_blurred_0 = gray_blurred;
 
-    // Dray the keypoints in the image
-    keypoints_in_image(gray_blurred, keypoints_fast);
-
+#if CANNY
+    // canny result is saved on gray_blurred
+    grayscale_opencv_to_yuv422(canny, img);
+#else
     // Set the image with the keypoints to be shown in camera
-    grayscale_opencv_to_yuv422(gray_blurred, img);
+    //grayscale_opencv_to_yuv422(gray_blurred, img);
+#endif
 }
 
 
@@ -161,12 +177,17 @@ void image_pipeline_init(char* img, int width, int height)
     vector<KeyPoint> keypoints_0;
 
     cvtColor(M,image,CV_YUV2BGR_Y422);
-    //Mat median = medianBlurring(image);
-    gray_blurred_0 = grayScl(image);
+    Mat median = medianBlurring(image);
+    gray_blurred_0 = grayScl(median);
     //Mat fgmask = fgbgMOG2(median);
     //tracking_pts_0 = cornerDetection(gray_blurred_0, fgmask);
+#if CANNY
+    Mat canny;
+    tracking_pts_0 = edgesDetection(gray_blurred_0,canny);
+#else
     keypoints_0 = FAST_detect(gray_blurred_0);
     tracking_pts_0 = keypoints_to_array(keypoints_0);
+#endif
 
 
 }
@@ -241,6 +262,25 @@ vector<Point2f> cornerDetection(Mat& gray_blurred, Mat& fgmask)
     goodFeaturesToTrack(gray_blurred, new_corners, MAX_CORNERS, QUALITY_LEVEL, MIN_DISTANCE, Mat(), BLOCK_SIZE, harris_detector, K_HARRIS);
         
     // Output
+    return new_corners;
+}
+
+
+vector<Point2f> edgesDetection(Mat& image, Mat& canny)
+{
+    vector<Point2i> edges;
+
+    Canny(image,canny, THRESHOLD_1, THRESHOLD_2);
+    findNonZero(canny,edges);
+
+    vector<Point2f> new_corners(edges.size());
+    printf("new corners size %d\n",new_corners.size());
+    printf("edges size %d\n",edges.size());
+
+    //for (int i = 0; i < edges.size(); ++i)
+    //{
+    //    new_corners.push_back(Point2f((float)edges[i].x,(float)edges[i].y));
+    //}
     return new_corners;
 }
 
