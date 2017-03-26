@@ -70,7 +70,10 @@ vector<Point2f> cornerDetection(Mat& gray_blurred, Mat& fgmask);
 vector<Point2f> fgbgOpticFlow(Mat& gray_blurred, Mat& gray_blurred_0, vector<Point2f>& tracking_pts_0);
 double *time2contact(vector<Point2f>& tracking_pts_0, vector<Point2f>& tracking_pts, Mat& gray_blurred);
 void save_times2contact(vector<Point2f>& tracking_pts, double *time_vector, double* times2contact, int width, int height);
-vector<Point2f> FAST_detect(Mat& gray_blurred);
+vector<KeyPoint> FAST_detect(Mat& gray_blurred);
+void keypoints_in_image(Mat& gray_blurred, vector<KeyPoint> keypoints_fast);
+vector<Point2f> keypoints_to_array(vector<KeyPoint> keypoints_fast);
+
 
 /* =======================================================================================================================================
  =======================================================================================================================================*/
@@ -97,6 +100,7 @@ void image_pipeline(char* img, int width, int height, double* times2contact)
     Mat fgmask;
     vector<Point2f> new_corners;
     vector<Point2f> tracking_pts;
+    vector<KeyPoint> keypoints_fast;
     double *time_vector;
 
     // Conver image buffer to Mat
@@ -127,21 +131,24 @@ void image_pipeline(char* img, int width, int height, double* times2contact)
     }
     // Convert the time_vector to a matrix
     save_times2contact(tracking_pts, time_vector, times2contact, width, height);
-    // Detects the new corners on the image (Shi-Tomasi)
+
+    // Detects the new corners on the image (Shi-Tomasi) // FAST algorithm
     //printf("fgmask size:%d \n",fgmask.size());
     //new_corners = cornerDetection(gray_blurred, fgmask);
-    new_corners = FAST_detect(gray_blurred);
+    keypoints_fast = FAST_detect(gray_blurred);
 
-    // TODO: IT SHOULDN'T BE NECESSARY (MIGHT BE THOUGH)
-    // Swap tracking_pts_0 and gray_blurred_0 with current ones
-    //tracking_pts_0.reshape(new_corners.channels,new_corners.rows);
-    //gray_blurred_0.reshape(gray_blurred.channels,gray_blurred.rows);
+    // Convert the keypoints to an array
+    new_corners = keypoints_to_array(keypoints_fast);
 
-    //tracking_pts_0.resize(new_corners.size());
+    // Set the current corners and image as "old" values for next frame
     tracking_pts_0 = new_corners;
-    //gray_blurred_0.create(Size(gray_blurred.rows, gray_blurred.cols),gray_blurred.type());
     gray_blurred_0 = gray_blurred;
-    grayscale_opencv_to_yuv422(gray_blurred_0,img);
+
+    // Dray the keypoints in the image
+    keypoints_in_image(gray_blurred, keypoints_fast);
+
+    // Set the image with the keypoints to be shown in camera
+    grayscale_opencv_to_yuv422(gray_blurred, img);
 }
 
 
@@ -151,12 +158,17 @@ void image_pipeline_init(char* img, int width, int height)
     //printf("Para el puto alber\n");
     Mat M(height, width, CV_8UC2, img);
     Mat image;
+    vector<KeyPoint> keypoints_0;
+
     cvtColor(M,image,CV_YUV2BGR_Y422);
     //Mat median = medianBlurring(image);
     gray_blurred_0 = grayScl(image);
     //Mat fgmask = fgbgMOG2(median);
     //tracking_pts_0 = cornerDetection(gray_blurred_0, fgmask);
-    tracking_pts_0 = FAST_detect(gray_blurred_0);
+    keypoints_0 = FAST_detect(gray_blurred_0);
+    tracking_pts_0 = keypoints_to_array(keypoints_0);
+
+
 }
 
 /* =======================================================================================================================================
@@ -257,23 +269,13 @@ vector<Point2f> fgbgOpticFlow(Mat& gray_blurred, Mat& gray_blurred_old, vector<P
 /* =======================================================================================================================================
  =======================================================================================================================================*/
 
-vector<Point2f> FAST_detect(Mat& gray_blurred)
+vector<KeyPoint> FAST_detect(Mat& gray_blurred)
 {
     vector<KeyPoint> keypoints_fast;
-    vector<Point2f> keypoints;
-    vector<int> keypoints_indexes;
 
     FAST(gray_blurred, keypoints_fast, THRESHOLD_FAST, nonmax_suppresion);
 
-    keypoints_indexes.reserve(keypoints_fast.size());
-    for (int i = 0; i < keypoints_fast.size(); ++i)
-    {
-        keypoints_indexes.push_back(i);
-    }
-
-    KeyPoint::convert(keypoints_fast, keypoints, keypoints_indexes);
-
-    return keypoints;
+    return keypoints_fast;
 }
 
 
@@ -350,4 +352,30 @@ void fill_array_with_minus_one(double *array, int npixels)
     {
         array[i] = -1.0;
     }
+}
+
+
+void keypoints_in_image(Mat& gray_blurred, vector<KeyPoint> keypoints_fast)
+{
+    drawKeypoints(gray_blurred, keypoints_fast, gray_blurred, Scalar::all(0), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+}
+
+
+vector<Point2f> keypoints_to_array(vector<KeyPoint> keypoints_fast)
+{
+
+    vector<Point2f> keypoints;
+    vector<int> keypoints_indexes;
+
+
+    keypoints_indexes.reserve(keypoints.size());
+    for (int i = 0; i < keypoints.size(); ++i)
+    {
+        keypoints_indexes.push_back(i);
+    }
+
+    KeyPoint::convert(keypoints_fast, keypoints, keypoints_indexes);    
+
+    return keypoints;
+
 }
