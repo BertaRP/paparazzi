@@ -47,12 +47,21 @@ struct image_t *colorfilter_func(struct image_t *img);
 struct image_t *colorfilter_func(struct image_t *img)
 {
   // Filter
-  color_count = image_yuv422_colorfilt(img, img,
+	struct image_t* orange;
+	orange = (struct image_t *)malloc(sizeof(struct image_t));
+
+	image_create(orange, img->w, img->h, img->type);
+  image_copy(img, orange);
+
+	//printf("[colorfilter] Image created\n");
+  color_count = image_yuv422_colorfilt(img, orange,
                                        color_lum_min, color_lum_max,
                                        color_cb_min, color_cb_max,
                                        color_cr_min, color_cr_max
                                       );
 
+  //printf("[colorfilter] Image filtered\n");
+  image_free(orange);
   return img; // Colorfilter did not make a new image
 }
 

@@ -17,7 +17,7 @@
  
  .- fgbgMOG2 (median) --> fgmask
  .- cornerDetection (gray_blurred, fgmask) --> tracking_pts_0
- 
+ t
 */
 
 #include "modules/computer_vision/cv.h"
@@ -28,6 +28,13 @@
 #define FRAME_RATE 1
 #define THRESHOLD_COUNT 10
 #define THRESHOLD_TIME 2
+
+#define PRINT(string,...) fprintf(stderr, "[orange_avoider->%s()] " string,__FUNCTION__ , ##__VA_ARGS__)
+#if ORANGE_AVOIDER_VERBOSE
+#define VERBOSE_PRINT PRINT
+#else
+#define VERBOSE_PRINT(...)
+#endif
 
 double *times2contact;
 int nFrame = 0;
@@ -48,14 +55,14 @@ struct image_t* opencv_func(struct image_t* img)
 		// If first time initialize times2contact to all -1
 		if (start)
 		{
-			int npixels = img->w*img->h;
 			width = img->w;
 			height = img->h;
+			int npixels = width*height;
 			times2contact = (double *)malloc(npixels*sizeof(double));
-			memset(times2contact, -1, npixels*sizeof(double));
+			fill_array_with_minus_one(times2contact ,npixels);
 			image_pipeline_init((char *) img->buf, img->w, img->h);
 			start = 0;
-		}
+		} 
 
 		if (nFrame % FRAME_RATE == 0)
 		{
@@ -66,10 +73,8 @@ struct image_t* opencv_func(struct image_t* img)
     	// Add one to the frame count
     	nFrame++;
     }
-    return NULL;
+    return img;
 }
-
-
 
 /* =======================================================================================================================================
  =======================================================================================================================================*/
@@ -84,6 +89,7 @@ void opencvdemo_init(void)
     cv_add_to_device(&OPENCVDEMO_CAMERA, opencv_func);
 }
 
+
 /* Looks at times2contact and reaches a decision on where to move :)
 	times2contact shape: 
  	|time1  time2  time3  time 4 |
@@ -97,7 +103,7 @@ void opencvdemo_init(void)
 	find the minimum time of those submatrices --> DIRECTION TO AVOID! 
 	Points where the time to contact is calculated will be labeled as -1.
 */
-int take_decision_periodic(void)
+int corner_avoider_periodic(void)
 {
     // CHANGE THIS HEADING DECISION FOR A DECISION MAKER
     // (heading_decision = -1 -> left, heading_decision = 0 -> center, heading_decision = 1 -> right)
@@ -106,13 +112,18 @@ int take_decision_periodic(void)
     int nC = 0;
     int nR = 0;
     int nL = 0;
-    int timep;
+    double timep;
+    
+    //printf("width %d \n",width);
+    //printf("height %d \n",height);
 
 	for (int x = 0; x < width; ++x)
 	{
-	    for (int y = 0; y < height; y++)
+	    for (int y = 0; y < height; ++y)
 	    {
 	        timep = times2contact[width*y+x];
+	        //printf("timep  %1.1f \n", timep);
+	        //printf("index %d \n", width*y+x);
 	        if (timep == -1)
 	        {
 	        	continue;
@@ -143,17 +154,19 @@ int take_decision_periodic(void)
 	    	{
 				heading_decision = -1; 	// turn left
 	    	} else {
-				heading_decision = -2; 	// trun sharply left
+				heading_decision = -2; 	// turn sharply left
 	    	}
 		} else {
 	    	if (nR <= THRESHOLD_COUNT) 
 	    	{
 				heading_decision = 1; 	// turn right
 	    	} else {
-				heading_decision = 2; 	// trun sharply right
+				heading_decision = 2; 	// turn sharply right
 	    	}
 		}
     }
     
+    printf("Heading_decision: %d \n", heading_decision);
+
     return heading_decision;
 }

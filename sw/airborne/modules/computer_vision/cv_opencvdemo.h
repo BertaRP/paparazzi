@@ -7,7 +7,7 @@
 
 // Functions
 void opencvdemo_init(void);
-int take_decision_periodic(void);
+int corner_avoider_periodic(void);
 
 
 #endif

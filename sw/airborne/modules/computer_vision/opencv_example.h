@@ -11,6 +11,7 @@ extern "C" {
     
 extern void image_pipeline(char* img, int width, int height, double* times2contact);
 extern void image_pipeline_init(char* img, int width, int height);
+extern void fill_array_with_minus_one(double *array, int npixels);
 
 #ifdef __cplusplus
 }
