@@ -30,7 +30,7 @@
 #endif
 
 uint8_t safeToGoForwards        = false;
-int tresholdColorCount          = 0.05 * 124800; // 520 x 240 = 124.800 total pixels
+int tresholdColorCount          = 0.05 * 124800/3; // 520 x 240 = 124.800 total pixels
 float incrementForAvoidance;
 uint16_t trajectoryConfidence   = 1;
 float maxDistance               = 2.25;
@@ -92,7 +92,8 @@ void orange_avoider_periodic()
       moveWaypointForward(WP_GOAL, moveDistance);
       moveWaypointForward(WP_TRAJECTORY, 1.25 * moveDistance);
       nav_set_heading_towards_waypoint(WP_GOAL);
-      chooseRandomIncrementAvoidance();
+      //chooseRandomIncrementAvoidance();
+      incrementForAvoidance = 0.0;
       trajectoryConfidence += 1;
   }
   else{
@@ -180,27 +181,31 @@ if (color_countOl<color_countBl){
    nL = color_countOl;
 }
 
-incrementForAvoidance = 0.0; // Initial value
+incrementForAvoidance = 2.0; // Initial value
 
  // See where there is lees point (left or right)
 if (nL>nR) {
-VERBOSE_PRINT("Left larger that right");
    if (nR < tresholdColorCount){
 	incrementForAvoidance = 10.0; // turn right
+VERBOSE_PRINT("Left larger that right1 \n");
    } else {
 	incrementForAvoidance = 100.0; // sharp turn right
+VERBOSE_PRINT("Left larger that right2 \n");
    }
 } else {
-VERBOSE_PRINT("Left smaller that right");
    if (nL < tresholdColorCount){
 	incrementForAvoidance = -10.0; // turn left
+VERBOSE_PRINT("Left smaller that right1 \n");
    } else {
 	incrementForAvoidance = -100.0; // sharp turn left
+VERBOSE_PRINT("Left smaller that right2 \n");
    }
 }
 
+VERBOSE_PRINT("Save to go forwards = %d \n", safeToGoForwards);
+
 VERBOSE_PRINT("Threshold count = %d \n", tresholdColorCount);
-VERBOSE_PRINT("Heading decision = %d \n", incrementForAvoidance);
+VERBOSE_PRINT("Heading angle = %f \n", incrementForAvoidance);
 VERBOSE_PRINT("Pixels right =  %d and pixels left = %d \n", nR, nL);
 
 /* // Randomly choose CW or CCW avoiding direction
