@@ -56,7 +56,7 @@ void orange_avoider_init()
   color_cr_maxO  = 255;
   // Initialise random values
   srand(time(NULL));
-  chooseRandomIncrementAvoidance();
+  //chooseRandomIncrementAvoidance();
 }
 
 /*
@@ -66,9 +66,27 @@ void orange_avoider_periodic()
 {
   // Check the amount of orange. If this is above a threshold
   // you want to turn a certain amount of degrees
-  safeToGoForwards = color_countO < tresholdColorCount && color_countB < tresholdColorCount;
-  VERBOSE_PRINT("Color_count orange: %d  threshold: %d safe: %d \n", color_countO, tresholdColorCount, safeToGoForwards);
-  VERBOSE_PRINT("Color_count black: %d  threshold: %d safe: %d \n", color_countB, tresholdColorCount, safeToGoForwards);
+
+  /*  if (nC <= threshold_count) { 
+	heading_decision = 0; 		// go straight
+    } else {
+	if (nR > nL) {
+	    if (nL <= threshold_count) {
+		heading_decision = -1; 	// turn left
+	    } else {
+		heading_decision = -2; 	// trun sharply left
+	    }
+	} else {
+	    if (nR <= threshold_count) {
+		heading_decision = 1; 	// turn right
+	    } else {
+		heading_decision = 2; 	// trun sharply right
+	    }
+	}
+    }*/
+  safeToGoForwards = color_countOc < tresholdColorCount && color_countBc < tresholdColorCount;
+ // VERBOSE_PRINT("Color_count orange: %d  threshold: %d safe: %d \n", color_countOc, tresholdColorCount, safeToGoForwards);
+  //VERBOSE_PRINT("Color_count black: %d  threshold: %d safe: %d \n", color_countBc, tresholdColorCount, safeToGoForwards);
   float moveDistance = fmin(maxDistance, 0.05 * trajectoryConfidence);
   if(safeToGoForwards){
       moveWaypointForward(WP_GOAL, moveDistance);
@@ -80,11 +98,11 @@ void orange_avoider_periodic()
   else{
       waypoint_set_here_2d(WP_GOAL);
       waypoint_set_here_2d(WP_TRAJECTORY);
+      chooseRandomIncrementAvoidance();
       increase_nav_heading(&nav_heading, incrementForAvoidance);
       if(trajectoryConfidence > 5){
           trajectoryConfidence -= 4;
-      }
-      else{
+      } else{
           trajectoryConfidence = 1;
       }
   }
@@ -148,7 +166,44 @@ uint8_t moveWaypointForward(uint8_t waypoint, float distanceMeters)
  */
 uint8_t chooseRandomIncrementAvoidance()
 {
-  // Randomly choose CW or CCW avoiding direction
+
+uint16_t nR = 0, nL = 0;
+
+if (color_countOr<color_countBr){
+   nR = color_countBr;
+} else {
+   nR = color_countOr;
+}
+if (color_countOl<color_countBl){
+   nL = color_countBl;
+} else {
+   nL = color_countOl;
+}
+
+incrementForAvoidance = 0.0; // Initial value
+
+ // See where there is lees point (left or right)
+if (nL>nR) {
+VERBOSE_PRINT("Left larger that right");
+   if (nR < tresholdColorCount){
+	incrementForAvoidance = 10.0; // turn right
+   } else {
+	incrementForAvoidance = 100.0; // sharp turn right
+   }
+} else {
+VERBOSE_PRINT("Left smaller that right");
+   if (nL < tresholdColorCount){
+	incrementForAvoidance = -10.0; // turn left
+   } else {
+	incrementForAvoidance = -100.0; // sharp turn left
+   }
+}
+
+VERBOSE_PRINT("Threshold count = %d \n", tresholdColorCount);
+VERBOSE_PRINT("Heading decision = %d \n", incrementForAvoidance);
+VERBOSE_PRINT("Pixels right =  %d and pixels left = %d \n", nR, nL);
+
+/* // Randomly choose CW or CCW avoiding direction
   int r = rand() % 2;
   if (r == 0) {
     incrementForAvoidance = 10.0;
@@ -156,7 +211,7 @@ uint8_t chooseRandomIncrementAvoidance()
   } else {
     incrementForAvoidance = -10.0;
   //  VERBOSE_PRINT("Set avoidance increment to: %f\n", incrementForAvoidance);
-  }
+  }*/
   return false;
 }
 

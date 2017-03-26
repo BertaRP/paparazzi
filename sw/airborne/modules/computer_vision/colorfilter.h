@@ -50,7 +50,8 @@ extern uint8_t color_cb_maxB;
 extern uint8_t color_cr_minB;
 extern uint8_t color_cr_maxB;
 
-extern int color_countO, color_countB;
+extern uint16_t color_countOl, color_countOc, color_countOr;
+extern uint16_t color_countBl, color_countBc, color_countBr;
 
 extern struct video_listener *listener;
 
