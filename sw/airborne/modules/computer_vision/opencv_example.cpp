@@ -300,6 +300,8 @@ double *time2contact(vector<Point2f>& tracking_pts_old, vector<Point2f>& trackin
     // Calculate the position of the center of the image
     center[0] = 0.5 * width;
     center[1] = 0.5 * height;
+
+    min_time2contact = 1000;
     
     for (unsigned int i = 0; i < tracking_pts.size(); ++i)
     {
@@ -318,18 +320,13 @@ double *time2contact(vector<Point2f>& tracking_pts_old, vector<Point2f>& trackin
             time_vector[i] = -1;
         } else {
             time_vector[i] = (distance/velocity) / REFRESH_RATE;
+        
+            if (time_vector[i] < min_time2contact)
+            {
+                min_time2contact = time_vector[i];
+            }        
         }
     }
-
-    min_time2contact = time_vector[0];
-
-    for (int k = 1; k < time_vector.size(); ++k)
-        {
-            if (time_vector[k] < min_time2contact && time_vector[k] != -1)
-            {
-                min_time2contact = time_vector[k];
-            }
-        }    
         
     return time_vector; 
 }

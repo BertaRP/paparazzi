@@ -250,7 +250,7 @@ static void send_rotorcraft_cmd(struct transport_tx *trans, struct link_device *
    Group 5 Telemetry --> time2contact / heading_decision / colorcounts */
 static void send_telemetry_group5(struct transport_tx *trans, struct link_device *dev)
 {
-  pprz_msg_send_group5(trans, dev, AC_ID,
+  pprz_msg_send_GROUP5(trans, dev, AC_ID,
                        &heading_decision,
                        &min_time2contact);
 }
@@ -294,7 +294,7 @@ void autopilot_init(void)
 #endif
 
 /***************************** TELEMETRY GROUP 5 **************************************/
-  register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_SEND_GROUP5, send_telemetry_group5);
+  register_periodic_telemetry(DefaultPeriodic, PPRZ_MSG_ID_GROUP5, send_telemetry_group5);
 
 }
 

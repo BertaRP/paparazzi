@@ -13,7 +13,7 @@ extern void image_pipeline(char* img, int width, int height, double* times2conta
 extern void image_pipeline_init(char* img, int width, int height);
 extern void fill_array_with_minus_one(double *array, int npixels);
 
-extern double min_time2contact;
+double min_time2contact;
 
 #ifdef __cplusplus
 }
