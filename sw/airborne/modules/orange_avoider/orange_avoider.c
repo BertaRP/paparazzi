@@ -30,7 +30,9 @@
 #endif
 
 uint8_t safeToGoForwards        = false;
-int tresholdColorCount          = 0.05 * 124800/3; // 520 x 240 = 124.800 total pixels
+//uint8_t safeToGoForwardsO       = false, safeToGoForwardsB       = false;
+int thresholdColorCountO        = 0.015 * 124800/3; // 520 x 240 = 124.800 total pixels
+int thresholdColorCountB        = 0.06 * 124800/3; // 520 x 240 = 124.800 total pixels
 float incrementForAvoidance;
 uint16_t trajectoryConfidence   = 1;
 float maxDistance               = 2.25;
@@ -41,18 +43,18 @@ float maxDistance               = 2.25;
 void orange_avoider_init()
 {
   // Initialise the variables of the colorfilter to accept black
-  color_lum_minB = 5;
-  color_lum_maxB = 20;
-  color_cb_minB  = 115;
-  color_cb_maxB  = 140;
-  color_cr_minB  = 115;
-  color_cr_maxB  = 140;
+  color_lum_minB = 10;
+  color_lum_maxB = 18;
+  color_cb_minB  = 127;
+  color_cb_maxB  = 150;
+  color_cr_minB  = 127;
+  color_cr_maxB  = 150;
   // Initialise the variables of the colorfilter to accept orange
   color_lum_minO = 20;
   color_lum_maxO = 255;
   color_cb_minO  = 75;
   color_cb_maxO  = 145;
-  color_cr_minO  = 167;
+  color_cr_minO  = 155;
   color_cr_maxO  = 255;
   // Initialise random values
   srand(time(NULL));
@@ -84,15 +86,17 @@ void orange_avoider_periodic()
 	    }
 	}
     }*/
-  safeToGoForwards = color_countOc < tresholdColorCount && color_countBc < tresholdColorCount;
+ // safeToGoForwards = (color_countOc+color_countBc) < tresholdColorCount;
+  safeToGoForwards = color_countOc < thresholdColorCountO && color_countBc < thresholdColorCountB;
  // VERBOSE_PRINT("Color_count orange: %d  threshold: %d safe: %d \n", color_countOc, tresholdColorCount, safeToGoForwards);
-  //VERBOSE_PRINT("Color_count black: %d  threshold: %d safe: %d \n", color_countBc, tresholdColorCount, safeToGoForwards);
-  float moveDistance = fmin(maxDistance, 0.05 * trajectoryConfidence);
+  //VERBOSE_PRINT("Hola");
+  float moveDistance = fmin(maxDistance, 0.04 * trajectoryConfidence);
   if(safeToGoForwards){
       moveWaypointForward(WP_GOAL, moveDistance);
       moveWaypointForward(WP_TRAJECTORY, 1.25 * moveDistance);
       nav_set_heading_towards_waypoint(WP_GOAL);
       //chooseRandomIncrementAvoidance();
+      VERBOSE_PRINT("Safe to go fwd \n");
       incrementForAvoidance = 0.0;
       trajectoryConfidence += 1;
   }
@@ -101,6 +105,7 @@ void orange_avoider_periodic()
       waypoint_set_here_2d(WP_TRAJECTORY);
       chooseRandomIncrementAvoidance();
       increase_nav_heading(&nav_heading, incrementForAvoidance);
+      VERBOSE_PRINT("Turn \n");
       if(trajectoryConfidence > 5){
           trajectoryConfidence -= 4;
       } else{
@@ -170,7 +175,7 @@ uint8_t chooseRandomIncrementAvoidance()
 
 uint16_t nR = 0, nL = 0;
 
-if (color_countOr<color_countBr){
+/*if (color_countOr<color_countBr){
    nR = color_countBr;
 } else {
    nR = color_countOr;
@@ -179,17 +184,19 @@ if (color_countOl<color_countBl){
    nL = color_countBl;
 } else {
    nL = color_countOl;
-}
+}*/
+nR = color_countBr + color_countOr;
+nL = color_countBl + color_countOl;
 
 incrementForAvoidance = 2.0; // Initial value
 
  // See where there is lees point (left or right)
-if (nL>nR) {
+/*if (nL>nR) {
    if (nR < tresholdColorCount){
 	incrementForAvoidance = 10.0; // turn right
 VERBOSE_PRINT("Left larger that right1 \n");
    } else {
-	incrementForAvoidance = 100.0; // sharp turn right
+	incrementForAvoidance = 40.0; // sharp turn right
 VERBOSE_PRINT("Left larger that right2 \n");
    }
 } else {
@@ -197,16 +204,29 @@ VERBOSE_PRINT("Left larger that right2 \n");
 	incrementForAvoidance = -10.0; // turn left
 VERBOSE_PRINT("Left smaller that right1 \n");
    } else {
-	incrementForAvoidance = -100.0; // sharp turn left
+	incrementForAvoidance = -40.0; // sharp turn left
 VERBOSE_PRINT("Left smaller that right2 \n");
    }
-}
+}*/
 
+if(color_countOr<thresholdColorCountO && color_countOr<color_countOl ){ //&& 
+   //color_countBr<thresholdColorCountB && color_countBr<color_countBl){
+	incrementForAvoidance = 10.0;
+} else {
+   if(color_countOl<thresholdColorCountO && color_countBl<thresholdColorCountB){
+	incrementForAvoidance = -10.0;
+   } else {
+      if(nR > nL){
+	incrementForAvoidance = -40.0;
+      } else {
+	incrementForAvoidance = 40.0;
+}}}
 VERBOSE_PRINT("Save to go forwards = %d \n", safeToGoForwards);
 
-VERBOSE_PRINT("Threshold count = %d \n", tresholdColorCount);
+VERBOSE_PRINT("Threshold count Orange = %d // Threshold count Black = %d \n", thresholdColorCountO, thresholdColorCountB);
 VERBOSE_PRINT("Heading angle = %f \n", incrementForAvoidance);
-VERBOSE_PRINT("Pixels right =  %d and pixels left = %d \n", nR, nL);
+VERBOSE_PRINT("Orange: left = %d,	center = %d,	right =  %d \n", color_countOl, color_countOc, color_countOr);
+VERBOSE_PRINT("Black:  left = %d,	center = %d,	right =  %d \n", color_countBl, color_countBc, color_countBr);
 
 /* // Randomly choose CW or CCW avoiding direction
   int r = rand() % 2;
