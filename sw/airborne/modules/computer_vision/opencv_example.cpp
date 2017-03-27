@@ -51,6 +51,11 @@ static const Size winSize = Size(10,10);
 #define THRESHOLD_FAST 50
 static const bool nonmax_suppresion = false;
 
+//CANNY parameters
+#define CANNY_CHECK 0
+#define THRESHOLD_CANNY_1 100
+#define THRESHOLD_CANNY_2 200
+
 
 #define OPENCV_EXAMPLE_VERBOSE TRUE
 #define PRINT(string,...) fprintf(stderr, "[opencv_example->%s()] " string,__FUNCTION__ , ##__VA_ARGS__)
@@ -71,6 +76,9 @@ vector<Point2f> fgbgOpticFlow(Mat& gray_blurred, Mat& gray_blurred_0, vector<Poi
 double *time2contact(vector<Point2f>& tracking_pts_0, vector<Point2f>& tracking_pts, Mat& gray_blurred);
 void save_times2contact(vector<Point2f>& tracking_pts, double *time_vector, double* times2contact, int width, int height);
 vector<Point2f> FAST_detect(Mat& gray_blurred);
+Mat cannyImage (Mat& image, Mat& canny);
+vector<Point2f> edgesDetection(Mat& canny);
+
 
 /* =======================================================================================================================================
  =======================================================================================================================================*/
@@ -98,6 +106,7 @@ void image_pipeline(char* img, int width, int height, double* times2contact)
     vector<Point2f> new_corners;
     vector<Point2f> tracking_pts;
     double *time_vector;
+    Mat canny;
 
     // Conver image buffer to Mat
     Mat M(height, width, CV_8UC2, img);
@@ -135,15 +144,24 @@ void image_pipeline(char* img, int width, int height, double* times2contact)
     // Detects the new corners on the image (Shi-Tomasi)
     //printf("fgmask size:%d \n",fgmask.size());
     //new_corners = cornerDetection(gray_blurred, fgmask);
+#if CANNY_CHECK
+    printf("Trying canny\n");
+    canny = canny_image(gray_blurred, canny);    
+    new_corners = edgesDetection(canny);
+    printf("Canny finished\n");
 
+#else
     // Detects the new corners on the image (FAST algorithm)
-    new_corners = FAST_detect(gray_blurred);
+    new_corners = FAST_detect(gray_blurred);    
 
+#endif
 
     tracking_pts_0 = new_corners;
     gray_blurred_0 = gray_blurred;
 
-    //grayscale_opencv_to_yuv422(gray_blurred_0,img);
+    grayscale_opencv_to_yuv422(canny, img);
+
+
 }
 
 
@@ -155,15 +173,29 @@ void image_pipeline_init(char* img, int width, int height)
     Mat image;
     cvtColor(M,image,CV_YUV2BGR_Y422);
 
-    //Mat median = medianBlurring(image);
+    // Median blurring
+    Mat median = medianBlurring(image);
 
-    gray_blurred_0 = grayScl(image);
+    // Grayscale
+    gray_blurred_0 = grayScl(median);
 
+    // Background-foreground segmentation
     //Mat fgmask = fgbgMOG2(median);
 
+    // Features detection (goodFeaturesToTrack)
     //tracking_pts_0 = cornerDetection(gray_blurred_0, fgmask);
+#if CANNY_CHECK
+    // Edges detection
+    Mat canny;
+    canny = canny_image(gray_blurred_0, canny);
+    tracking_pts_0 = edgesDetection(canny);    
 
+#else    
+    // Corners detection (FAST algorithm)
     tracking_pts_0 = FAST_detect(gray_blurred_0);
+
+#endif
+
 }
 
 /* =======================================================================================================================================
@@ -361,3 +393,30 @@ void fill_array_with_minus_one(double *array, int npixels)
 /* =======================================================================================================================================
  =======================================================================================================================================*/
 
+Mat cannyImage(Mat& image, Mat& canny)
+{
+
+    Canny(image, canny, THRESHOLD_CANNY_1, THRESHOLD_CANNY_2);
+
+    return canny;
+}
+
+/* =======================================================================================================================================
+ =======================================================================================================================================*/
+
+
+vector<Point2f> edgesDetection(Mat& canny)
+{
+    vector<Point2i> edges;
+
+    findNonZero(canny, edges);
+
+    vector<Point2f> new_corners(edges.size());
+
+    for (unsigned int i = 0; i < edges.size(); ++i)
+    {
+        new_corners.push_back(Point2f(((float)edges[i].x,(float)edges[i].y)));
+    }
+
+    return new_corners;
+}
