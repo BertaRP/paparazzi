@@ -22,8 +22,8 @@
 #include "modules/computer_vision/cv_opencvdemo.h"
 
 #define ORANGE_AVOIDER_VERBOSE TRUE
-#define ORANGE_AVOIDER_CHECK 0 // Toggle check of orange avoider before corner_avoider
-#define SHARP_TURN 30
+#define COLOR_AVOIDER_CHECK 1 // Toggle check of orange avoider before corner_avoider
+#define SHARP_TURN 15
 #define NORMAL_TURN 10
 
 
@@ -39,7 +39,8 @@ uint8_t calculateForwards(struct EnuCoor_i *new_coor, float distanceMeters);
 
 
 uint8_t safeToGoForwards        = false;
-int tresholdColorCount          = 0.05 * 124800; // 520 x 240 = 124.800 total pixels
+int thresholdColorCountO        = 0.015 * 124800/3; // 520 x 240 = 124.800 total pixels
+int thresholdColorCountB        = 0.06 * 124800/3;  // 520 x 240 = 124.800 total pixels
 float incrementForAvoidance;
 uint16_t trajectoryConfidence   = 1;
 float maxDistance               = 2.25;
@@ -49,38 +50,44 @@ float maxDistance               = 2.25;
  */
 void orange_avoider_init()
 {
+   // Initialise the variables of the colorfilter to accept black
+  color_lum_minB = 10;
+  color_lum_maxB = 18;
+  color_cb_minB  = 127;
+  color_cb_maxB  = 150;
+  color_cr_minB  = 127;
+  color_cr_maxB  = 150;
   // Initialise the variables of the colorfilter to accept orange
-  color_lum_min = 20;
-  color_lum_max = 255;
-  color_cb_min  = 75;
-  color_cb_max  = 145;
-  color_cr_min  = 167;
-  color_cr_max  = 255;
+  color_lum_minO = 20;
+  color_lum_maxO = 255;
+  color_cb_minO  = 75;
+  color_cb_maxO  = 145;
+  color_cr_minO  = 155;
+  color_cr_maxO  = 255;  
   // Initialise random values
   srand(time(NULL));
-  chooseRandomIncrementAvoidance();
 }
 
 
 void take_decision_periodic()
 {
 
-#if ORANGE_AVOIDER_CHECK
-  int no_orange = orange_avoider_periodic();
+#if COLOR_AVOIDER_CHECK
+  int no_color = orange_avoider_periodic();
 #endif
   heading_decision = corner_avoider_periodic();
   //VERBOSE_PRINT("Heading_decision: %d \n", heading_decision);
 
 
-#if ORANGE_AVOIDER_CHECK
+#if COLOR_AVOIDER_CHECK
   
-  if (no_orange)
+  if (no_color)
   {
 
 #endif
-    chooseDecisionBasedOnCorners(heading_decision);
+    chooseDecisionBasedOnCorners();
 
-#if ORANGE_AVOIDER_CHECK
+#if COLOR_AVOIDER_CHECK
   } else {
       chooseDecisionBasedOnOrange();
   }
@@ -88,7 +95,7 @@ void take_decision_periodic()
 }
 
 
-void chooseDecisionBasedOnCorners(int heading_decision)
+void chooseDecisionBasedOnCorners()
 {
   //VERBOSE_PRINT("Entering: chooseDecisionBasedOnCorners: %d \n", 0);
   float moveDistance = fmin(maxDistance, 0.05 * trajectoryConfidence);
@@ -102,7 +109,7 @@ void chooseDecisionBasedOnCorners(int heading_decision)
   }
   else{
       //VERBOSE_PRINT("chooseDecisionBasedOnCorners --> heading_decision != 0: %d \n", 0);
-      chooseEducatedIncrementAvoidance(heading_decision);
+      chooseEducatedIncrementAvoidance();
       waypoint_set_here_2d(WP_GOAL);
       waypoint_set_here_2d(WP_TRAJECTORY);
       increase_nav_heading(&nav_heading, incrementForAvoidance);
@@ -114,6 +121,7 @@ void chooseDecisionBasedOnCorners(int heading_decision)
       }
   }
 }
+
 
 void chooseDecisionBasedOnOrange()
 {
@@ -136,9 +144,10 @@ int orange_avoider_periodic()
 {
   // Check the amount of orange. If this is above a threshold
   // you want to turn a certain amount of degrees
-  int no_orange = color_count < tresholdColorCount;
-  //VERBOSE_PRINT("Color_count: %d  threshold: %d no_orange: %d \n", color_count, tresholdColorCount, no_orange);
-  return no_orange;
+  int no_color = color_countOc < thresholdColorCountO && color_countBc < thresholdColorCountB;
+
+  //VERBOSE_PRINT("Color_count: %d  threshold: %d no_color: %d \n", color_count, tresholdColorCount, no_color);
+  return no_color;
 }
 
 /*
@@ -193,7 +202,7 @@ uint8_t moveWaypointForward(uint8_t waypoint, float distanceMeters)
   return false;
 }
 
-uint8_t chooseEducatedIncrementAvoidance(int heading_decision)
+uint8_t chooseEducatedIncrementAvoidance()
 {
   // Randomly choose CW or CCW avoiding direction
   switch (heading_decision)
@@ -211,15 +220,37 @@ uint8_t chooseEducatedIncrementAvoidance(int heading_decision)
  */
 uint8_t chooseRandomIncrementAvoidance()
 {
-  // Randomly choose CW or CCW avoiding direction
-  int r = rand() % 2;
-  if (r == 0) {
-    incrementForAvoidance = NORMAL_TURN;
-    //VERBOSE_PRINT("Set avoidance increment to: %f\n", incrementForAvoidance);
-  } else {
-    incrementForAvoidance = -NORMAL_TURN;
-    //VERBOSE_PRINT("Set avoidance increment to: %f\n", incrementForAvoidance);
-  }
+
+uint16_t nR = 0, nL = 0;
+
+
+nR = color_countBr + color_countOr;
+nL = color_countBl + color_countOl;
+
+
+if(color_countOr < thresholdColorCountO && color_countOr < color_countOl ){ //&& 
+   //color_countBr<thresholdColorCountB && color_countBr<color_countBl){
+  incrementForAvoidance = 10.0;
+} else {
+   if(color_countOl < thresholdColorCountO && color_countBl < thresholdColorCountB){
+  incrementForAvoidance = -10.0;
+   } else {
+      if(nR > nL){
+  incrementForAvoidance = -40.0;
+      } else {
+  incrementForAvoidance = 40.0;
+}}}
+
+VERBOSE_PRINT("Safe to go forwards = %d \n", heading_decision);
+
+VERBOSE_PRINT("Heading angle = %f \n", incrementForAvoidance);
+
+VERBOSE_PRINT("Orange: left = %d, center = %d,  right =  %d \n", color_countOl, color_countOc, color_countOr);
+
+VERBOSE_PRINT("Black:  left = %d, center = %d,  right =  %d \n", color_countBl, color_countBc, color_countBr);
+
   return false;
 }
+
+
 

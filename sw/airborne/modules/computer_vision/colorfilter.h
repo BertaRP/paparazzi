@@ -32,16 +32,26 @@
 // Module functions
 extern void colorfilter_init(void);
 
-extern uint8_t color_lum_min;
-extern uint8_t color_lum_max;
+extern uint8_t color_lum_minO;
+extern uint8_t color_lum_maxO;
 
-extern uint8_t color_cb_min;
-extern uint8_t color_cb_max;
+extern uint8_t color_cb_minO;
+extern uint8_t color_cb_maxO;
 
-extern uint8_t color_cr_min;
-extern uint8_t color_cr_max;
+extern uint8_t color_cr_minO;
+extern uint8_t color_cr_maxO;
 
-extern int color_count;
+extern uint8_t color_lum_minB;
+extern uint8_t color_lum_maxB;
+
+extern uint8_t color_cb_minB;
+extern uint8_t color_cb_maxB;
+
+extern uint8_t color_cr_minB;
+extern uint8_t color_cr_maxB;
+
+extern uint16_t color_countOl, color_countOc, color_countOr;
+extern uint16_t color_countBl, color_countBc, color_countBr;
 
 extern struct video_listener *listener;
 

@@ -114,16 +114,12 @@ int corner_avoider_periodic(void)
     int nL = 0;
     double timep;
     
-    //printf("width %d \n",width);
-    //printf("height %d \n",height);
-
 	for (int x = 0; x < width; ++x)
 	{
 	    for (int y = 0; y < height; ++y)
 	    {
 	        timep = times2contact[width*y+x];
-	        //printf("timep  %1.1f \n", timep);
-	        //printf("index %d \n", width*y+x);
+
 	        if (timep == -1)
 	        {
 	        	continue;
@@ -166,7 +162,5 @@ int corner_avoider_periodic(void)
 		}
     }
     
-    printf("Heading_decision: %d \n", heading_decision);
-
     return heading_decision;
 }

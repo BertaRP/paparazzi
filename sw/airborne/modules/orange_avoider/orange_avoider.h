@@ -25,9 +25,9 @@ extern uint8_t moveWaypointForward(uint8_t, float);
 extern uint8_t moveWaypoint(uint8_t, struct EnuCoor_i *);
 extern uint8_t increase_nav_heading(int32_t *, float);
 extern uint8_t chooseRandomIncrementAvoidance(void);
-extern uint8_t chooseEducatedIncrementAvoidance(int heading_decision);
+extern uint8_t chooseEducatedIncrementAvoidance(void);
 extern void chooseDecisionBasedOnOrange(void);
-extern void chooseDecisionBasedOnCorners(int heading_decision);
+extern void chooseDecisionBasedOnCorners(void);
 
 int8_t heading_decision;
 

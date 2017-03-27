@@ -25,7 +25,7 @@ using namespace cv;
 #define REFRESH_RATE 30 // fps
 
 // Blur parameter
-#define KERNEL_SIZE 29
+#define KERNEL_SIZE 17
 
 // Background substraction parameters
 #define HISTORY 1
@@ -94,7 +94,7 @@ void image_pipeline(char* img, int width, int height, double* times2contact)
     //printf("image_pipeline!!!\n");
     Mat median;
     Mat gray_blurred;
-    Mat fgmask;
+    //Mat fgmask;
     vector<Point2f> new_corners;
     vector<Point2f> tracking_pts;
     double *time_vector;
@@ -105,14 +105,17 @@ void image_pipeline(char* img, int width, int height, double* times2contact)
     cvtColor(M,image,CV_YUV2BGR_Y422);
 
     // Blurs the image with a median filter
-   // median = medianBlurring(image);
+    median = medianBlurring(image);
     //printf("Median\n");
+
     // Convert the blurred image to grayscale
-    gray_blurred = grayScl(image);
+    gray_blurred = grayScl(median);
     //printf("gray\n");
+
     // Compute the foreground mask
     //fgmask = fgbgMOG2(median);
     //printf("fgmask\n");
+
     // Compute the optical flow in the blurred, grayscale image
     //printf("tracking_pts_0 size (%1.3f,%1.3f) \n",tracking_pts_0[0].x, tracking_pts_0[0].y);
     //printf("tracking_pts_0 size (%1.3f,%1.3f) \n",tracking_pts_0[1].x, tracking_pts_0[1].y);
@@ -125,23 +128,22 @@ void image_pipeline(char* img, int width, int height, double* times2contact)
         // Time to contact (or any other decision maker)
         time_vector = time2contact(tracking_pts_0, tracking_pts, gray_blurred);
     }
+
     // Convert the time_vector to a matrix
     save_times2contact(tracking_pts, time_vector, times2contact, width, height);
+    
     // Detects the new corners on the image (Shi-Tomasi)
     //printf("fgmask size:%d \n",fgmask.size());
     //new_corners = cornerDetection(gray_blurred, fgmask);
+
+    // Detects the new corners on the image (FAST algorithm)
     new_corners = FAST_detect(gray_blurred);
 
-    // TODO: IT SHOULDN'T BE NECESSARY (MIGHT BE THOUGH)
-    // Swap tracking_pts_0 and gray_blurred_0 with current ones
-    //tracking_pts_0.reshape(new_corners.channels,new_corners.rows);
-    //gray_blurred_0.reshape(gray_blurred.channels,gray_blurred.rows);
 
-    //tracking_pts_0.resize(new_corners.size());
     tracking_pts_0 = new_corners;
-    //gray_blurred_0.create(Size(gray_blurred.rows, gray_blurred.cols),gray_blurred.type());
     gray_blurred_0 = gray_blurred;
-    grayscale_opencv_to_yuv422(gray_blurred_0,img);
+
+    //grayscale_opencv_to_yuv422(gray_blurred_0,img);
 }
 
 
@@ -152,10 +154,15 @@ void image_pipeline_init(char* img, int width, int height)
     Mat M(height, width, CV_8UC2, img);
     Mat image;
     cvtColor(M,image,CV_YUV2BGR_Y422);
+
     //Mat median = medianBlurring(image);
+
     gray_blurred_0 = grayScl(image);
+
     //Mat fgmask = fgbgMOG2(median);
+
     //tracking_pts_0 = cornerDetection(gray_blurred_0, fgmask);
+
     tracking_pts_0 = FAST_detect(gray_blurred_0);
 }
 
@@ -226,7 +233,7 @@ vector<Point2f> cornerDetection(Mat& gray_blurred, Mat& fgmask)
     //mask.setTo(Scalar::all(1));
     
     // Find corners
-    goodFeaturesToTrack(gray_blurred, new_corners, MAX_CORNERS, QUALITY_LEVEL, MIN_DISTANCE, Mat(), BLOCK_SIZE, harris_detector, K_HARRIS);
+    goodFeaturesToTrack(gray_blurred, new_corners, MAX_CORNERS, QUALITY_LEVEL, MIN_DISTANCE, fgmask, BLOCK_SIZE, harris_detector, K_HARRIS);
         
     // Output
     return new_corners;
@@ -266,7 +273,7 @@ vector<Point2f> FAST_detect(Mat& gray_blurred)
     FAST(gray_blurred, keypoints_fast, THRESHOLD_FAST, nonmax_suppresion);
 
     keypoints_indexes.reserve(keypoints_fast.size());
-    for (int i = 0; i < keypoints_fast.size(); ++i)
+    for (unsigned int i = 0; i < keypoints_fast.size(); ++i)
     {
         keypoints_indexes.push_back(i);
     }
@@ -300,8 +307,6 @@ double *time2contact(vector<Point2f>& tracking_pts_old, vector<Point2f>& trackin
     // Calculate the position of the center of the image
     center[0] = 0.5 * width;
     center[1] = 0.5 * height;
-
-    min_time2contact = 1000;
     
     for (unsigned int i = 0; i < tracking_pts.size(); ++i)
     {
@@ -319,12 +324,7 @@ double *time2contact(vector<Point2f>& tracking_pts_old, vector<Point2f>& trackin
         {
             time_vector[i] = -1;
         } else {
-            time_vector[i] = (distance/velocity) / REFRESH_RATE;
-        
-            if (time_vector[i] < min_time2contact)
-            {
-                min_time2contact = time_vector[i];
-            }        
+            time_vector[i] = (distance/velocity) / REFRESH_RATE;    
         }
     }
         

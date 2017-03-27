@@ -2227,7 +2227,6 @@
 
    <message name="GROUP5" id="249">
       <field name="heading_decision" type="int8"/>
-      <field name="min_time2contact" type="float"/>
    </message>
 
   <message name="INDI_G" id="250">

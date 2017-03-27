@@ -251,8 +251,7 @@ static void send_rotorcraft_cmd(struct transport_tx *trans, struct link_device *
 static void send_telemetry_group5(struct transport_tx *trans, struct link_device *dev)
 {
   pprz_msg_send_GROUP5(trans, dev, AC_ID,
-                       &heading_decision,
-                       &min_time2contact);
+                       &heading_decision);
 }
 /************************************************************************************/
 
