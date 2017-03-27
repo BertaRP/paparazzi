@@ -72,7 +72,7 @@ double *time2contact(vector<Point2f>& tracking_pts_0, vector<Point2f>& tracking_
 void save_times2contact(vector<Point2f>& tracking_pts, double *time_vector, double* times2contact, int width, int height);
 vector<KeyPoint> FAST_detect(Mat& gray_blurred);
 void keypoints_in_image(Mat& gray_blurred, vector<KeyPoint> keypoints_fast);
-vector<Point2f> keypoints_to_array(vector<KeyPoint> keypoints_fast);
+vector<Point2f> keypoints_to_vector(vector<KeyPoint> keypoints_fast);
 
 
 /* =======================================================================================================================================
@@ -137,18 +137,18 @@ void image_pipeline(char* img, int width, int height, double* times2contact)
     //new_corners = cornerDetection(gray_blurred, fgmask);
     keypoints_fast = FAST_detect(gray_blurred);
 
-    // Convert the keypoints to an array
-    new_corners = keypoints_to_array(keypoints_fast);
+    // Convert the keypoints to an vector
+    new_corners = keypoints_to_vector(keypoints_fast);
 
     // Set the current corners and image as "old" values for next frame
     tracking_pts_0 = new_corners;
     gray_blurred_0 = gray_blurred;
 
     // Dray the keypoints in the image
-    keypoints_in_image(gray_blurred, keypoints_fast);
+    //keypoints_in_image(image, keypoints_fast);
 
     // Set the image with the keypoints to be shown in camera
-    grayscale_opencv_to_yuv422(gray_blurred, img);
+   // colorrgb_opencv_to_yuv422(image, img);
 }
 
 
@@ -166,7 +166,7 @@ void image_pipeline_init(char* img, int width, int height)
     //Mat fgmask = fgbgMOG2(median);
     //tracking_pts_0 = cornerDetection(gray_blurred_0, fgmask);
     keypoints_0 = FAST_detect(gray_blurred_0);
-    tracking_pts_0 = keypoints_to_array(keypoints_0);
+    tracking_pts_0 = keypoints_to_vector(keypoints_0);
 
 
 }
@@ -303,7 +303,7 @@ double *time2contact(vector<Point2f>& tracking_pts_old, vector<Point2f>& trackin
     center[0] = 0.5 * width;
     center[1] = 0.5 * height;
 
-    min_time2contact = 1000;
+    min_time2contact = 1000.0;
     
     for (unsigned int i = 0; i < tracking_pts.size(); ++i)
     {
@@ -320,13 +320,15 @@ double *time2contact(vector<Point2f>& tracking_pts_old, vector<Point2f>& trackin
         if (velocity == 0)
         {
             time_vector[i] = -1;
-        } else {
+        } 
+        else 
+        {
             time_vector[i] = (distance/velocity) / REFRESH_RATE;
         
             if (time_vector[i] < min_time2contact)
             {
                 min_time2contact = time_vector[i];
-            }        
+            }       
         }
     }
         
@@ -361,7 +363,7 @@ void keypoints_in_image(Mat& gray_blurred, vector<KeyPoint> keypoints_fast)
 }
 
 
-vector<Point2f> keypoints_to_array(vector<KeyPoint> keypoints_fast)
+vector<Point2f> keypoints_to_vector(vector<KeyPoint> keypoints_fast)
 {
 
     vector<Point2f> keypoints;
