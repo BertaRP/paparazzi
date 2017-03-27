@@ -103,6 +103,7 @@ bool   autopilot_detect_ground_once;
 #include "pprzlink/messages.h"
 #include "modules/orange_avoider/orange_avoider.h"
 #include "modules/computer_vision/opencv_example.h"
+#include "modules/computer_vision/colorfilter.h"
 /************************************************************************************/
 
 
@@ -251,7 +252,13 @@ static void send_rotorcraft_cmd(struct transport_tx *trans, struct link_device *
 static void send_telemetry_group5(struct transport_tx *trans, struct link_device *dev)
 {
   pprz_msg_send_GROUP5(trans, dev, AC_ID,
-                       &heading_decision);
+                       &heading_decision,
+                       &color_countOl,
+                       &color_countOc,
+                       &color_countOr,
+                       &color_countBl,
+                       &color_countBc,
+                       &color_countBr);
 }
 /************************************************************************************/
 

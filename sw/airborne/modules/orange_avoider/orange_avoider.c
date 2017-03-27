@@ -23,7 +23,7 @@
 
 #define ORANGE_AVOIDER_VERBOSE TRUE
 #define COLOR_AVOIDER_CHECK 1 // Toggle check of orange avoider before corner_avoider
-#define SHARP_TURN 15
+#define SHARP_TURN 40
 #define NORMAL_TURN 10
 
 
@@ -39,7 +39,7 @@ uint8_t calculateForwards(struct EnuCoor_i *new_coor, float distanceMeters);
 
 
 uint8_t safeToGoForwards        = false;
-int thresholdColorCountO        = 0.015 * 124800/3; // 520 x 240 = 124.800 total pixels
+int thresholdColorCountO        = 0.001 * 124800/3; // 520 x 240 = 124.800 total pixels
 int thresholdColorCountB        = 0.06 * 124800/3;  // 520 x 240 = 124.800 total pixels
 float incrementForAvoidance;
 uint16_t trajectoryConfidence   = 1;
@@ -52,6 +52,7 @@ void orange_avoider_init()
 {
    // Initialise the variables of the colorfilter to accept black
   color_lum_minB = 10;
+
   color_lum_maxB = 18;
   color_cb_minB  = 127;
   color_cb_maxB  = 150;
@@ -228,19 +229,30 @@ nR = color_countBr + color_countOr;
 nL = color_countBl + color_countOl;
 
 
-if(color_countOr < thresholdColorCountO && color_countOr < color_countOl ){ //&& 
+if(color_countOr < thresholdColorCountO && color_countOr < color_countOl )
+{ //&& 
    //color_countBr<thresholdColorCountB && color_countBr<color_countBl){
   incrementForAvoidance = 10.0;
-} else {
-   if(color_countOl < thresholdColorCountO && color_countBl < thresholdColorCountB){
-  incrementForAvoidance = -10.0;
-   } else {
-      if(nR > nL){
-  incrementForAvoidance = -40.0;
-      } else {
-  incrementForAvoidance = 40.0;
-}}}
-
+} 
+else
+{
+    if(color_countOl < thresholdColorCountO && color_countBl < thresholdColorCountB)
+    {
+      incrementForAvoidance = -10.0;
+    } 
+    else 
+      {
+        if(nR > nL)
+      {
+          incrementForAvoidance = -40.0;
+      } 
+      else 
+        {
+          incrementForAvoidance = 40.0;
+        }
+    }
+}
+/*
 VERBOSE_PRINT("Safe to go forwards = %d \n", heading_decision);
 
 VERBOSE_PRINT("Heading angle = %f \n", incrementForAvoidance);
@@ -248,7 +260,7 @@ VERBOSE_PRINT("Heading angle = %f \n", incrementForAvoidance);
 VERBOSE_PRINT("Orange: left = %d, center = %d,  right =  %d \n", color_countOl, color_countOc, color_countOr);
 
 VERBOSE_PRINT("Black:  left = %d, center = %d,  right =  %d \n", color_countBl, color_countBc, color_countBr);
-
+*/
   return false;
 }
 
