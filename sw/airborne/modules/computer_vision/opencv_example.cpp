@@ -71,7 +71,7 @@ vector<Point2f> fgbgOpticFlow(Mat& gray_blurred, Mat& gray_blurred_0, vector<Poi
 double *time2contact(vector<Point2f>& tracking_pts_0, vector<Point2f>& tracking_pts, Mat& gray_blurred);
 void save_times2contact(vector<Point2f>& tracking_pts, double *time_vector, double* times2contact, int width, int height);
 vector<KeyPoint> FAST_detect(Mat& gray_blurred);
-void keypoints_in_image(Mat& gray_blurred, vector<KeyPoint> keypoints_fast);
+Mat keypoints_in_image(Mat& image, vector<KeyPoint> keypoints_fast);
 vector<Point2f> keypoints_to_vector(vector<KeyPoint> keypoints_fast);
 
 
@@ -100,8 +100,9 @@ void image_pipeline(char* img, int width, int height, double* times2contact)
     Mat fgmask;
     vector<Point2f> new_corners;
     vector<Point2f> tracking_pts;
-    vector<KeyPoint> keypoints_fast;
     double *time_vector;
+    vector<KeyPoint> keypoints_fast;
+    Mat out_image;
 
     // Conver image buffer to Mat
     Mat M(height, width, CV_8UC2, img);
@@ -145,10 +146,10 @@ void image_pipeline(char* img, int width, int height, double* times2contact)
     gray_blurred_0 = gray_blurred;
 
     // Dray the keypoints in the image
-    //keypoints_in_image(image, keypoints_fast);
+    out_image = keypoints_in_image(image, keypoints_fast);
 
     // Set the image with the keypoints to be shown in camera
-   // colorrgb_opencv_to_yuv422(image, img);
+    colorrgb_opencv_to_yuv422(out_image, img);
 }
 
 
@@ -165,6 +166,7 @@ void image_pipeline_init(char* img, int width, int height)
     gray_blurred_0 = grayScl(image);
     //Mat fgmask = fgbgMOG2(median);
     //tracking_pts_0 = cornerDetection(gray_blurred_0, fgmask);
+
     keypoints_0 = FAST_detect(gray_blurred_0);
     tracking_pts_0 = keypoints_to_vector(keypoints_0);
 
@@ -357,9 +359,13 @@ void fill_array_with_minus_one(double *array, int npixels)
 }
 
 
-void keypoints_in_image(Mat& gray_blurred, vector<KeyPoint> keypoints_fast)
+Mat keypoints_in_image(Mat& image, vector<KeyPoint> keypoints_fast)
 {
-    drawKeypoints(gray_blurred, keypoints_fast, gray_blurred, Scalar::all(0), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+    Mat out_image;
+
+    drawKeypoints(image, keypoints_fast, out_image, Scalar::all(-1),DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+
+    return out_image;
 }
 
 
@@ -370,8 +376,8 @@ vector<Point2f> keypoints_to_vector(vector<KeyPoint> keypoints_fast)
     vector<int> keypoints_indexes;
 
 
-    keypoints_indexes.reserve(keypoints.size());
-    for (int i = 0; i < keypoints.size(); ++i)
+    keypoints_indexes.reserve(keypoints_fast.size());
+    for (int i = 0; i < keypoints_fast.size(); ++i)
     {
         keypoints_indexes.push_back(i);
     }
