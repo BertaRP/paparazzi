@@ -54,19 +54,19 @@ struct image_t* opencv_func(struct image_t* img)
 		// If first time initialize times2contact to all -1
 		if (start)
 		{
-			width = img->w;
-			height = img->h;
+			height = img->w;
+			width = img->h;
 			int npixels = width*height;
 			times2contact = (double *)malloc(npixels*sizeof(double));
 			fill_array_with_minus_one(times2contact ,npixels);
-			image_pipeline_init((char *) img->buf, img->w, img->h);
+			image_pipeline_init((char *) img->buf, width, height);
 			start = 0;
 		} 
 
 		if (nFrame % FRAME_RATE == 0)
 		{
 			// TODO: Check if necesary to give width and height
-    		image_pipeline((char *) img->buf, img->w, img->h, times2contact);
+    		image_pipeline((char *) img->buf, width, height, times2contact);
 		}
 
     	// Add one to the frame count
