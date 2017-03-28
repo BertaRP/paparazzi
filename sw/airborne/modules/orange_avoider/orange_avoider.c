@@ -23,7 +23,7 @@
 
 #define ORANGE_AVOIDER_VERBOSE TRUE
 #define COLOR_AVOIDER_CHECK 1 // Toggle check of orange avoider before corner_avoider
-#define SHARP_TURN 40
+#define SHARP_TURN 10
 #define NORMAL_TURN 10
 
 
@@ -232,23 +232,23 @@ nL = color_countBl + color_countOl;
 if(color_countOr < thresholdColorCountO && color_countOr < color_countOl )
 { //&& 
    //color_countBr<thresholdColorCountB && color_countBr<color_countBl){
-  incrementForAvoidance = 10.0;
+  incrementForAvoidance = NORMAL_TURN;
 } 
 else
 {
     if(color_countOl < thresholdColorCountO && color_countBl < thresholdColorCountB)
     {
-      incrementForAvoidance = -10.0;
+      incrementForAvoidance = -NORMAL_TURN;
     } 
     else 
       {
         if(nR > nL)
       {
-          incrementForAvoidance = -40.0;
+          incrementForAvoidance = -SHARP_TURN;
       } 
       else 
         {
-          incrementForAvoidance = 40.0;
+          incrementForAvoidance = SHARP_TURN;
         }
     }
 }

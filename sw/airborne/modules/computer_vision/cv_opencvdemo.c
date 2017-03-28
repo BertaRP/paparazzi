@@ -49,7 +49,6 @@ struct image_t* opencv_func(struct image_t* img);
 
 struct image_t* opencv_func(struct image_t* img)
 {
-
 	if (img->type == IMAGE_YUV422)
 	{
 		// If first time initialize times2contact to all -1

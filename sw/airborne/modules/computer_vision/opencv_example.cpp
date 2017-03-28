@@ -73,8 +73,8 @@ Mat gray_blurred_0;
 // Mat fgbgMOG2(Mat& median);
 // vector<Point2f> cornerDetection(Mat& gray_blurred, Mat& fgmask);
 // vector<Point2f> fgbgOpticFlow(Mat& gray_blurred, Mat& gray_blurred_0, vector<Point2f>& tracking_pts_0);
-double *time2contact(vector<Point2f>& tracking_pts_0, vector<Point2f>& tracking_pts, Mat& gray_blurred);
-void save_times2contact(vector<Point2f>& tracking_pts, double *time_vector, double* times2contact, int width, int height);
+void time2contact(vector<Point2f>& tracking_pts_0, vector<Point2f>& tracking_pts, Mat& gray_blurred, double* time_vector);
+void save_times2contact(vector<Point2f>& tracking_pts, double* time_vector, double* times2contact, int width, int height);
 // vector<Point2f> FAST_detect(Mat& gray_blurred);
 // Mat cannyImage (Mat& canny);
 // vector<Point2f> edgesDetection(Mat& canny);
@@ -86,8 +86,6 @@ void save_times2contact(vector<Point2f>& tracking_pts, double *time_vector, doub
 
 void image_pipeline(char* img, int width, int height, double* times2contact)
 {
-  
-
     /* Periodic function to compute the optical flow in an outer loop:
      .- Gets the old image and tracking points (from last frame)
      .- Blur the image
@@ -100,7 +98,7 @@ void image_pipeline(char* img, int width, int height, double* times2contact)
      .- Returns the heading decision (e.g. 0: far left, 1: left, 2: center, 3: right, 4: far right)
      */
 
-    //printf("Inside image_pipeline \n");
+    printf("Inside image_pipeline \n");
     tracking_pts_0.clear();
     gray_blurred_0.release();
 
@@ -108,10 +106,9 @@ void image_pipeline(char* img, int width, int height, double* times2contact)
     Mat median;
     Mat gray_blurred;
     vector<Point2f> tracking_pts;
-    double *time_vector;
     vector<uchar> status;
     vector<float> err;
-   
+    double *time_vector;    // Time to contact [s]   
     // Conver image buffer to Mat
     Mat M(height, width, CV_8UC2, img);
     Mat image;
@@ -124,7 +121,6 @@ void image_pipeline(char* img, int width, int height, double* times2contact)
     // Convert the blurred image to grayscale --> Output = gray_blurred
     cvtColor(median, gray_blurred, CV_BGR2GRAY);
     //printf("gray\n");
-
     // Compute the optical flow in the blurred, grayscale image
     if (tracking_pts_0.size() == 0)
     {
@@ -132,12 +128,16 @@ void image_pipeline(char* img, int width, int height, double* times2contact)
     } else {
         calcOpticalFlowPyrLK(gray_blurred_0, gray_blurred, tracking_pts_0, tracking_pts, status, err, winSize, MAX_LEVEL, criteria, FLAGS, MIN_EIG_THRESHOLD);
         // Time to contact 
-        time_vector = time2contact(tracking_pts_0, tracking_pts, gray_blurred);
+        time_vector = (double *)malloc(tracking_pts.size()*sizeof(double));
+        time2contact(tracking_pts_0, tracking_pts, gray_blurred, time_vector);
     }
 
     // Convert the time_vector to a matrix
     save_times2contact(tracking_pts, time_vector, times2contact, width, height);
- 
+    if (tracking_pts.size())
+    {
+        free(time_vector);
+    }
 
 #if CANNY_CHECK
     Mat canny;
@@ -169,6 +169,8 @@ void image_pipeline(char* img, int width, int height, double* times2contact)
         }
     }
 
+    //grayscale_opencv_to_yuv422(canny, img);
+
 // Release memory
     canny.release();
     edges.clear();
@@ -198,6 +200,8 @@ void image_pipeline(char* img, int width, int height, double* times2contact)
     tracking_pts_0 = new_corners;
     gray_blurred_0 = gray_blurred;
 
+    //grayscale_opencv_to_yuv422(gray_blurred,img);
+
 
 // Release memory
     new_corners.clear();
@@ -208,7 +212,6 @@ void image_pipeline(char* img, int width, int height, double* times2contact)
     image.release();
     status.clear();
     err.clear();
-
 }
 
 
@@ -300,7 +303,6 @@ void image_pipeline_init(char* img, int width, int height)
     M.release();
     image.release();
     median.release();
-
 }
 
 /* =======================================================================================================================================
@@ -427,7 +429,7 @@ vector<Point2f> FAST_detect(Mat& gray_blurred)
  =======================================================================================================================================*/
 
 
-double *time2contact(vector<Point2f>& tracking_pts_old, vector<Point2f>& tracking_pts, Mat& gray_blurred)
+void time2contact(vector<Point2f>& tracking_pts_old, vector<Point2f>& tracking_pts, Mat& gray_blurred, double* time_vector)
 {
 /* This function computes the time to contact given the tracking points (corners) of the previous frame and 
  the points returned by the optical flow calculation for the current frame. 
@@ -441,8 +443,7 @@ double *time2contact(vector<Point2f>& tracking_pts_old, vector<Point2f>& trackin
     double center[2];                           // position of the center of the image
     double position_x, position_y, distance;    // posision components and distance (module of the position)
     double velocity_x, velocity_y, velocity;    // velocity components and module of the velocity
-    double time_vector[tracking_pts.size()];    // Time to contact [s]
-       
+    
     // Calculate the position of the center of the image
     center[0] = 0.5 * width;
     center[1] = 0.5 * height;
@@ -461,14 +462,12 @@ double *time2contact(vector<Point2f>& tracking_pts_old, vector<Point2f>& trackin
 
         if (velocity == 0)
         {
-            time_vector[i] = -1;
+            time_vector[i]=-1;
         } else 
         {
             time_vector[i] = (distance/velocity) / REFRESH_RATE;    
         }
     }
-        
-    return time_vector; 
 }
 
 /* =======================================================================================================================================
@@ -488,7 +487,7 @@ void save_times2contact(vector<Point2f>& tracking_pts, double *time_vector, doub
         int x = tracking_pts[i].x;
         int y = tracking_pts[i].y;
         times2contact[width*y+x] = time_vector[i];
-
+        printf("time_vector %1.1f\n",time_vector[i]);
         if (x < width/3 && time_vector[i] < mintime2contact_l)
         {
             mintime2contact_l = time_vector[i];
@@ -503,10 +502,10 @@ void save_times2contact(vector<Point2f>& tracking_pts, double *time_vector, doub
         }
     }
 
-    for (int j = 0; j < 40; ++j)
-    {
-        printf("timetocontact %1.1f \n",times2contact[j]);
-    }
+//    for (int j = 0; j < width*height; ++j)
+//    {
+//        printf("timetocontact %1.1f \n",times2contact[j]);
+//    }
 
 }
 
