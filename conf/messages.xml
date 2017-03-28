@@ -2226,13 +2226,17 @@
   </message>
 
    <message name="GROUP5" id="249">
-      <field name="heading_decision" type="int8"/>
-      <field name="color_count0l"    type="uint16"/>
-      <field name="color_count0c"    type="uint16"/>
-      <field name="color_count0r"    type="uint16"/>
-      <field name="color_countBl"    type="uint16"/>
-      <field name="color_countBc"    type="uint16"/>
-      <field name="color_countBr"    type="uint16"/>
+      <field name="heading_decision"     type="int8"/>
+      <field name="color_count0l"        type="uint16"/>
+      <field name="color_count0c"        type="uint16"/>
+      <field name="color_count0r"        type="uint16"/>
+      <field name="color_countBl"        type="uint16"/>
+      <field name="color_countBc"        type="uint16"/>
+      <field name="color_countBr"        type="uint16"/>
+      <field name="mintime2contact_l"    type="float"/>
+      <field name="mintime2contact_c"    type="float"/>
+      <field name="mintime2contact_r"    type="float"/>
+    
    </message>
 
   <message name="INDI_G" id="250">

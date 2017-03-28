@@ -52,7 +52,7 @@ static const Size winSize = Size(10,10);
 static const bool nonmax_suppresion = false;
 
 //CANNY parameters
-#define CANNY_CHECK 0
+#define CANNY_CHECK 1
 #define THRESHOLD_CANNY_1 100
 #define THRESHOLD_CANNY_2 200
 
@@ -68,16 +68,16 @@ static const bool nonmax_suppresion = false;
 vector<Point2f> tracking_pts_0;
 Mat gray_blurred_0;
 
-Mat medianBlurring(Mat& image);
-Mat grayScl(Mat& median);
-Mat fgbgMOG2(Mat& median);
-vector<Point2f> cornerDetection(Mat& gray_blurred, Mat& fgmask);
-vector<Point2f> fgbgOpticFlow(Mat& gray_blurred, Mat& gray_blurred_0, vector<Point2f>& tracking_pts_0);
+// Mat medianBlurring(Mat& image);
+// Mat grayScl(Mat& median);
+// Mat fgbgMOG2(Mat& median);
+// vector<Point2f> cornerDetection(Mat& gray_blurred, Mat& fgmask);
+// vector<Point2f> fgbgOpticFlow(Mat& gray_blurred, Mat& gray_blurred_0, vector<Point2f>& tracking_pts_0);
 double *time2contact(vector<Point2f>& tracking_pts_0, vector<Point2f>& tracking_pts, Mat& gray_blurred);
 void save_times2contact(vector<Point2f>& tracking_pts, double *time_vector, double* times2contact, int width, int height);
-vector<Point2f> FAST_detect(Mat& gray_blurred);
-Mat cannyImage (Mat& image, Mat& canny);
-vector<Point2f> edgesDetection(Mat& canny);
+// vector<Point2f> FAST_detect(Mat& gray_blurred);
+// Mat cannyImage (Mat& canny);
+// vector<Point2f> edgesDetection(Mat& canny);
 
 
 /* =======================================================================================================================================
@@ -99,108 +99,214 @@ void image_pipeline(char* img, int width, int height, double* times2contact)
      .- Recompute the corners--> save corners and current frame to the output to be used in the next iteration
      .- Returns the heading decision (e.g. 0: far left, 1: left, 2: center, 3: right, 4: far right)
      */
-    //printf("image_pipeline!!!\n");
+
+    //printf("Inside image_pipeline \n");
+    tracking_pts_0.clear();
+    gray_blurred_0.release();
+
+   
     Mat median;
     Mat gray_blurred;
-    //Mat fgmask;
-    vector<Point2f> new_corners;
     vector<Point2f> tracking_pts;
     double *time_vector;
-    Mat canny;
-
+    vector<uchar> status;
+    vector<float> err;
+   
     // Conver image buffer to Mat
     Mat M(height, width, CV_8UC2, img);
     Mat image;
     cvtColor(M,image,CV_YUV2BGR_Y422);
 
-    // Blurs the image with a median filter
-    median = medianBlurring(image);
+    // Blurs the image with a median filter --> Output = median
+    medianBlur(image, median, KERNEL_SIZE);
     //printf("Median\n");
 
-    // Convert the blurred image to grayscale
-    gray_blurred = grayScl(median);
+    // Convert the blurred image to grayscale --> Output = gray_blurred
+    cvtColor(median, gray_blurred, CV_BGR2GRAY);
     //printf("gray\n");
 
-    // Compute the foreground mask
-    //fgmask = fgbgMOG2(median);
-    //printf("fgmask\n");
-
     // Compute the optical flow in the blurred, grayscale image
-    //printf("tracking_pts_0 size (%1.3f,%1.3f) \n",tracking_pts_0[0].x, tracking_pts_0[0].y);
-    //printf("tracking_pts_0 size (%1.3f,%1.3f) \n",tracking_pts_0[1].x, tracking_pts_0[1].y);
-
     if (tracking_pts_0.size() == 0)
     {
         fill_array_with_minus_one(times2contact, width*height);
     } else {
-        tracking_pts = fgbgOpticFlow(gray_blurred, gray_blurred_0, tracking_pts_0);
-        // Time to contact (or any other decision maker)
+        calcOpticalFlowPyrLK(gray_blurred_0, gray_blurred, tracking_pts_0, tracking_pts, status, err, winSize, MAX_LEVEL, criteria, FLAGS, MIN_EIG_THRESHOLD);
+        // Time to contact 
         time_vector = time2contact(tracking_pts_0, tracking_pts, gray_blurred);
     }
 
     // Convert the time_vector to a matrix
     save_times2contact(tracking_pts, time_vector, times2contact, width, height);
-    
-    // Detects the new corners on the image (Shi-Tomasi)
-    //printf("fgmask size:%d \n",fgmask.size());
-    //new_corners = cornerDetection(gray_blurred, fgmask);
+ 
+
 #if CANNY_CHECK
-    printf("Trying canny\n");
-    canny = canny_image(gray_blurred, canny);    
-    new_corners = edgesDetection(canny);
-    printf("Canny finished\n");
+    Mat canny;
+    vector<Point2i> edges;
+    int k = 0;
+
+    // Edges detection --> Output = canny
+    Canny(gray_blurred_0, canny, THRESHOLD_CANNY_1, THRESHOLD_CANNY_2);
+
+    // Find the edges in the output
+    findNonZero(canny, edges);
+
+    // Allocate the vector of corners
+    vector<Point2f> new_corners(edges.size());
+
+    // Get the coordinates of the coordinates
+    for (int i = 0; i < canny.cols; ++i)
+    {
+        for (int j = 0; j < canny.rows; ++j)
+        {
+            if (canny.at<uchar>(j,i) == 255)    
+            {
+                new_corners[k].x = i;
+                new_corners[k].y = j;
+                printf("new_corners (x) %1.3f \n",new_corners[k].x);
+                printf("new_corners (y) %1.3f \n",new_corners[k].y);
+                k += 1;
+            }    
+        }
+    }
+
+// Release memory
+    canny.release();
+    edges.clear();
 
 #else
+    vector<KeyPoint> keypoints_fast;
+    vector<Point2f> new_corners;
+    vector<int> keypoints_indexes; 
+
     // Detects the new corners on the image (FAST algorithm)
-    new_corners = FAST_detect(gray_blurred);    
+    FAST(gray_blurred, keypoints_fast, THRESHOLD_FAST, nonmax_suppresion);
+
+    keypoints_indexes.reserve(keypoints_fast.size());
+    for (unsigned int i = 0; i < keypoints_fast.size(); ++i)
+    {
+        keypoints_indexes.push_back(i);
+    }
+
+    KeyPoint::convert(keypoints_fast, new_corners, keypoints_indexes);
+
+// Release memory
+    keypoints_fast.clear();
+    keypoints_indexes.clear();
 
 #endif
 
     tracking_pts_0 = new_corners;
     gray_blurred_0 = gray_blurred;
 
-    grayscale_opencv_to_yuv422(canny, img);
 
+// Release memory
+    new_corners.clear();
+    median.release();
+    gray_blurred.release();
+    tracking_pts.clear();
+    M.release();
+    image.release();
+    status.clear();
+    err.clear();
 
 }
+
+
+/* =======================================================================================================================================
+ =======================================================================================================================================*/
 
 
 // Call this function on the first frame
 void image_pipeline_init(char* img, int width, int height)
 {
-    //printf("Para el puto alber\n");
     Mat M(height, width, CV_8UC2, img);
     Mat image;
+    Mat median;
+
+    tracking_pts_0.clear();
+    gray_blurred_0.release();        
+
+    // Converts the image to YUV422 --> Output = image
     cvtColor(M,image,CV_YUV2BGR_Y422);
 
-    // Median blurring
-    Mat median = medianBlurring(image);
+    // Median blurring --> Output = median
+    medianBlur(image, median, KERNEL_SIZE);
 
-    // Grayscale
-    gray_blurred_0 = grayScl(median);
+    // Convert the blurred image to grayscale --> Output = gray_blurred_0
+    cvtColor(median, gray_blurred_0, CV_BGR2GRAY);
 
-    // Background-foreground segmentation
-    //Mat fgmask = fgbgMOG2(median);
-
-    // Features detection (goodFeaturesToTrack)
-    //tracking_pts_0 = cornerDetection(gray_blurred_0, fgmask);
+   
 #if CANNY_CHECK
-    // Edges detection
     Mat canny;
-    canny = canny_image(gray_blurred_0, canny);
-    tracking_pts_0 = edgesDetection(canny);    
+    vector<Point2i> edges;
+    int k = 0;
+
+    // Edges detection --> Output = canny
+    Canny(gray_blurred_0, canny, THRESHOLD_CANNY_1, THRESHOLD_CANNY_2);
+
+    // Find the edges in the output
+    findNonZero(canny, edges);
+
+    // Allocate the vector of corners
+    vector<Point2f> new_corners(edges.size());
+
+    // Get the coordinates of the coordinates
+    for (int i = 0; i < canny.cols; ++i)
+    {
+        for (int j = 0; j < canny.rows; ++j)
+        {
+            if (canny.at<uchar>(j,i) == 255)    
+            {
+                new_corners[k].x = i;
+                new_corners[k].y = j;
+                printf("new_corners (x) %1.3f \n",new_corners[k].x);
+                printf("new_corners (y) %1.3f \n",new_corners[k].y);
+                k += 1;
+            }    
+        }
+    }
+
+    tracking_pts_0 = new_corners;
+
+    canny.release();
+    edges.clear();
+    new_corners.clear();
 
 #else    
-    // Corners detection (FAST algorithm)
-    tracking_pts_0 = FAST_detect(gray_blurred_0);
+    vector<Point2i> keypoints_indexes;
+    vector<KeyPoint> keypoints_fast;
+    vector<Point2f> new_corners;
+
+    // Detects the new corners on the image (FAST algorithm) --> Output = keypoints_Fast
+    FAST(gray_blurred_0, keypoints_fast, THRESHOLD_FAST, nonmax_suppresion);
+
+    keypoints_indexes.reserve(keypoints_fast.size());
+    for (unsigned int i = 0; i < keypoints_fast.size(); ++i)
+    {
+        keypoints_indexes.push_back(i);
+    }
+
+    // Convert the keypoints to a vector of floats --> Output = new_corners
+    KeyPoint::convert(keypoints_fast, new_corners, keypoints_indexes);
+
+    tracking_pts_0 = new_corners;
+
+    keypoints_indexes.clear();
+    keypoints_fast.clear();
+    new_corners.clear();
 
 #endif
+
+    M.release();
+    image.release();
+    median.release();
 
 }
 
 /* =======================================================================================================================================
  =======================================================================================================================================*/
 
+/*
 
 Mat medianBlurring(Mat& image)
 {
@@ -218,6 +324,7 @@ Mat medianBlurring(Mat& image)
 /* =======================================================================================================================================
  =======================================================================================================================================*/
 
+/*
 Mat grayScl(Mat& median)
 {
     // Output
@@ -233,7 +340,7 @@ Mat grayScl(Mat& median)
 /* =======================================================================================================================================
  =======================================================================================================================================*/
 
-
+/*
 Mat fgbgMOG2(Mat& median)
 {
     //Output
@@ -255,7 +362,7 @@ Mat fgbgMOG2(Mat& median)
 
 /* =======================================================================================================================================
 =======================================================================================================================================*/
-
+/*
 
 vector<Point2f> cornerDetection(Mat& gray_blurred, Mat& fgmask)
 {    
@@ -274,7 +381,7 @@ vector<Point2f> cornerDetection(Mat& gray_blurred, Mat& fgmask)
 
 /* =======================================================================================================================================
  =======================================================================================================================================*/
-
+/*
 
 vector<Point2f> fgbgOpticFlow(Mat& gray_blurred, Mat& gray_blurred_old, vector<Point2f>& tracking_pts_old)
 {
@@ -295,7 +402,7 @@ vector<Point2f> fgbgOpticFlow(Mat& gray_blurred, Mat& gray_blurred_old, vector<P
 
 /* =======================================================================================================================================
  =======================================================================================================================================*/
-
+/*
 vector<Point2f> FAST_detect(Mat& gray_blurred)
 {
     vector<KeyPoint> keypoints_fast;
@@ -355,7 +462,8 @@ double *time2contact(vector<Point2f>& tracking_pts_old, vector<Point2f>& trackin
         if (velocity == 0)
         {
             time_vector[i] = -1;
-        } else {
+        } else 
+        {
             time_vector[i] = (distance/velocity) / REFRESH_RATE;    
         }
     }
@@ -369,14 +477,37 @@ double *time2contact(vector<Point2f>& tracking_pts_old, vector<Point2f>& trackin
 void save_times2contact(vector<Point2f>& tracking_pts, double *time_vector, double *times2contact, int width, int height)
 {
     // All points are -1 but the ones on tracking pts
-    fill_array_with_minus_one(times2contact, width*height);    
+    fill_array_with_minus_one(times2contact, width*height);   
+
+    mintime2contact_l = 1000.0;
+    mintime2contact_c = 1000.0;
+    mintime2contact_r = 1000.0; 
 
     for (unsigned int i = 0; i < tracking_pts.size(); ++i)
     {
         int x = tracking_pts[i].x;
         int y = tracking_pts[i].y;
         times2contact[width*y+x] = time_vector[i];
-    } 
+
+        if (x < width/3 && time_vector[i] < mintime2contact_l)
+        {
+            mintime2contact_l = time_vector[i];
+        }
+        else if (x > 2*width/3 && time_vector[i] < mintime2contact_r)
+        {
+            mintime2contact_r = time_vector[i];
+        }
+        else if (time_vector[i] < mintime2contact_c)
+        {
+            mintime2contact_c = time_vector[i];
+        }
+    }
+
+    for (int j = 0; j < 40; ++j)
+    {
+        printf("timetocontact %1.1f \n",times2contact[j]);
+    }
+
 }
 
 /* =======================================================================================================================================
@@ -392,18 +523,22 @@ void fill_array_with_minus_one(double *array, int npixels)
 
 /* =======================================================================================================================================
  =======================================================================================================================================*/
-
-Mat cannyImage(Mat& image, Mat& canny)
+/*
+Mat cannyImage(Mat& canny)
 {
+    Mat mask;
+    Mat canny_edges;
 
-    Canny(image, canny, THRESHOLD_CANNY_1, THRESHOLD_CANNY_2);
+    mask = Scalar::all(0);
 
-    return canny;
+    canny_edges.copyTo(mask, canny);
+
+    return canny_edges;
 }
 
 /* =======================================================================================================================================
  =======================================================================================================================================*/
-
+/*
 
 vector<Point2f> edgesDetection(Mat& canny)
 {
@@ -412,11 +547,25 @@ vector<Point2f> edgesDetection(Mat& canny)
     findNonZero(canny, edges);
 
     vector<Point2f> new_corners(edges.size());
+    int k = 0;
 
-    for (unsigned int i = 0; i < edges.size(); ++i)
+    for (int i = 0; i < canny.cols; ++i)
     {
-        new_corners.push_back(Point2f(((float)edges[i].x,(float)edges[i].y)));
+        for (int j = 0; j < canny.rows; ++j)
+        {
+            if (canny.at<uchar>(j,i) == 255)    
+            {
+                new_corners[k].x = i;
+                new_corners[k].y = j;
+                printf("new_corners (x) %1.3f \n",new_corners[k].x);
+                printf("new_corners (y) %1.3f \n",new_corners[k].y);
+                k += 1;
+            }    
+        }
     }
+
 
     return new_corners;
 }
+
+*/

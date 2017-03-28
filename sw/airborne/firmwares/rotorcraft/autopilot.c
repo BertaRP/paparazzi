@@ -258,7 +258,10 @@ static void send_telemetry_group5(struct transport_tx *trans, struct link_device
                        &color_countOr,
                        &color_countBl,
                        &color_countBc,
-                       &color_countBr);
+                       &color_countBr,
+                       &mintime2contact_l,
+                       &mintime2contact_c,
+                       &mintime2contact_r);
 }
 /************************************************************************************/
 
