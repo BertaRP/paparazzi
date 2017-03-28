@@ -80,7 +80,7 @@ Mat canny_old;
 
 void time2contact(vector<Point2f>& tracking_pts_0, vector<Point2f>& tracking_pts, Mat& gray_blurred, double* time_vector);
 void save_times2contact(vector<Point2f>& tracking_pts, vector<uchar>& status, double* time_vector, double* times2contact, int width, int height);
-void times2contactWithFlow(Mat& canny,Mat& flow,double* times2contact);
+void times2contactWithFlow(Mat& canny,Mat& flow,double* times2contact, Mat& canny_old);
 
 
 /* =======================================================================================================================================
@@ -113,6 +113,7 @@ void image_pipeline(char* img, int width, int height, double* times2contact)
     Mat M(height, width, CV_8UC2, img);
     Mat image;
     cvtColor(M,image,CV_YUV2BGR_Y422);
+
 #if SPARSE
     // Compute the optical flow in the blurred, grayscale image
     if (tracking_pts_0.size() == 0)
@@ -175,7 +176,7 @@ void image_pipeline(char* img, int width, int height, double* times2contact)
     Mat flow;
     calcOpticalFlowFarneback(canny_old, canny, flow, PYR_SCALE, LEVELS_FARNEBACK, WIN_SIZE_FARNEBACK, IT_FARNEBACK, POLY_N, POLY_SIGMA, 0);
     printf("Optical flow computed\n");
-    times2contactWithFlow(canny, flow, times2contact);
+    times2contactWithFlow(canny, flow, times2contact, canny_old);
     printf("times2contact saved\n");
     flow.release();
 #endif
@@ -330,7 +331,7 @@ void save_times2contact(vector<Point2f>& tracking_pts, vector<uchar>& status, do
     printf("Loop done\n");
 }
 
-void times2contactWithFlow(Mat& canny,Mat& flow,double* times2contact)
+void times2contactWithFlow(Mat& canny, Mat& flow, double* times2contact, Mat& canny_old)
 {
 /* This function computes the time to contact given the tracking points (corners) of the previous frame and 
  the points returned by the optical flow calculation for the current frame. 
@@ -339,11 +340,11 @@ void times2contactWithFlow(Mat& canny,Mat& flow,double* times2contact)
  changes, be aware that in "time[idx2] = distance/velocity * REFRESH_RATE", REFRESH_RATE should be changed to the new refresh rate. 
  */
     
-    int width  = canny.cols;             // width of the image
-    int height = canny.rows;             // height of the image
+    int width  = canny_old.cols;             // width of the image
+    int height = canny_old.rows;             // height of the image
     double center[2];                           // position of the center of the image
     double position_x, position_y, distance;    // posision components and distance (module of the position)
-    double  velocity;    // velocity components and module of the velocity
+    double velocity;    // velocity components and module of the velocity
     
     // Calculate the position of the center of the image
     center[0] = 0.5 * width;
@@ -353,38 +354,45 @@ void times2contactWithFlow(Mat& canny,Mat& flow,double* times2contact)
     mintime2contact_c = 1000.0;
     mintime2contact_r = 1000.0; 
     
-    for (unsigned int y = 0; y < canny.rows; ++y)
+    for (int y = 0; y < width; ++y)
     {
-        for (unsigned int x = 0; x < canny.cols; ++x)
+        for (int x = 0; x < height; ++x)
         {
             position_x = center[0] - x;
             position_y = center[1] - y;
+
+            printf("Pillando coordenadas\n");
             Point2f disp = flow.at<Point2f>(x,y);
-            printf("AQUI ES DONDE PARECE QUE PETA OJITO\n");
-            distance = sqrt(position_x*position_x+position_y*position_y);
-            velocity = sqrt(disp.x*disp.x+disp.y*disp.y);
-            printf("width*y+x: %d\n", width*y+x);
+            printf("x: %d\n", x);
+            printf("MAX_x: %d\n", flow.cols);            
+            printf("y: %d\n", y);
+            printf("MAX_y: %d\n", flow.rows);            
+            printf("Coordenadas pilladas\n");
+
+            distance = sqrt(position_x*position_x + position_y*position_y);
+            velocity = sqrt(disp.x*disp.x + disp.y*disp.y);
+            printf("width*y+x: %d\n", width*x+y);
             printf("width*height: %d\n", width*height );
             if (velocity == 0)
             {
-                times2contact[width*y+x]=-1;
+                times2contact[width*x+y]=-1;
                 printf("velocity = 0\n");
             } else 
             {
                 printf("velocity NOT EQUAL to 0\n");
-                times2contact[width*y+x]= (distance/velocity) / REFRESH_RATE; 
-                printf("\n");
-                if (x < width/3 && times2contact[width*y+x] < mintime2contact_l)
+                times2contact[width*x+y]= (distance/velocity) / REFRESH_RATE; 
+                printf("Time2contact saved\n");
+                if (x < width/3 && times2contact[width*x+y] < mintime2contact_l)
                 {
-                    mintime2contact_l = times2contact[width*y+x];
+                    mintime2contact_l = times2contact[width*x+y];
                 }
-                else if (x > 2*width/3 && times2contact[width*y+x] < mintime2contact_r)
+                else if (x > 2*width/3 && times2contact[width*x+y] < mintime2contact_r)
                 {
-                    mintime2contact_r = times2contact[width*y+x];
+                    mintime2contact_r = times2contact[width*x+y];
                 }
-                else if (times2contact[width*y+x] < mintime2contact_c)
+                else if (times2contact[width*x+y] < mintime2contact_c)
                 {
-                    mintime2contact_c = times2contact[width*y+x];
+                    mintime2contact_c = times2contact[width*x+y];
                 }   
             }
         }
