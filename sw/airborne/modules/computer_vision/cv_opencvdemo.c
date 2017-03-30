@@ -27,7 +27,7 @@
 
 #define FRAME_RATE 1
 #define THRESHOLD_COUNT 10
-#define THRESHOLD_TIME 2
+#define THRESHOLD_TIME 0.01
 
 #define PRINT(string,...) fprintf(stderr, "[orange_avoider->%s()] " string,__FUNCTION__ , ##__VA_ARGS__)
 #if ORANGE_AVOIDER_VERBOSE

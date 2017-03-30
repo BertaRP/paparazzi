@@ -361,13 +361,13 @@ void times2contactWithFlow(Mat& canny, Mat& flow, double* times2contact, Mat& ca
             position_x = center[0] - x;
             position_y = center[1] - y;
 
-            printf("Pillando coordenadas\n");
+            printf("Getting coordenadas\n");
             Point2f disp = flow.at<Point2f>(x,y);
             printf("x: %d\n", x);
-            printf("MAX_x: %d\n", flow.cols);            
+            printf("Columns: %d\n", flow.cols);            
             printf("y: %d\n", y);
-            printf("MAX_y: %d\n", flow.rows);            
-            printf("Coordenadas pilladas\n");
+            printf("Rows: %d\n", flow.rows);            
+            printf("Coordinates finished\n");
 
             distance = sqrt(position_x*position_x + position_y*position_y);
             velocity = sqrt(disp.x*disp.x + disp.y*disp.y);

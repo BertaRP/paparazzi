@@ -22,8 +22,8 @@
 #include "modules/computer_vision/cv_opencvdemo.h"
 
 #define ORANGE_AVOIDER_VERBOSE TRUE
-#define COLOR_AVOIDER_CHECK 1 // Toggle check of orange avoider before corner_avoider
-#define SHARP_TURN 10
+#define COLOR_AVOIDER_CHECK 0 // Toggle check of orange avoider before corner_avoider
+#define SHARP_TURN 20
 #define NORMAL_TURN 10
 
 
@@ -39,7 +39,7 @@ uint8_t calculateForwards(struct EnuCoor_i *new_coor, float distanceMeters);
 
 
 uint8_t safeToGoForwards        = false;
-int thresholdColorCountO        = 0.001 * 124800/3; // 520 x 240 = 124.800 total pixels
+int thresholdColorCountO        = 0.025 * 260*128; // 520 x 240 = 124.800 total pixels
 int thresholdColorCountB        = 0.06 * 124800/3;  // 520 x 240 = 124.800 total pixels
 float incrementForAvoidance;
 uint16_t trajectoryConfidence   = 1;
@@ -52,7 +52,6 @@ void orange_avoider_init()
 {
    // Initialise the variables of the colorfilter to accept black
   color_lum_minB = 10;
-
   color_lum_maxB = 18;
   color_cb_minB  = 127;
   color_cb_maxB  = 150;
@@ -63,10 +62,11 @@ void orange_avoider_init()
   color_lum_maxO = 255;
   color_cb_minO  = 75;
   color_cb_maxO  = 145;
-  color_cr_minO  = 155;
+  color_cr_minO  = 167;
   color_cr_maxO  = 255;  
   // Initialise random values
   srand(time(NULL));
+  chooseRandomIncrementAvoidance();
 }
 
 
@@ -86,7 +86,8 @@ void take_decision_periodic()
   {
 
 #endif
-    chooseDecisionBasedOnCorners();
+  chooseDecisionBasedOnCorners();
+
 
 #if COLOR_AVOIDER_CHECK
   } else {
@@ -145,7 +146,8 @@ int orange_avoider_periodic()
 {
   // Check the amount of orange. If this is above a threshold
   // you want to turn a certain amount of degrees
-  int no_color = color_countOc < thresholdColorCountO && color_countBc < thresholdColorCountB;
+  int no_color = color_countOc < thresholdColorCountO;
+  // && color_countBc < thresholdColorCountB;
 
   //VERBOSE_PRINT("Color_count: %d  threshold: %d no_color: %d \n", color_count, tresholdColorCount, no_color);
   return no_color;
@@ -176,8 +178,8 @@ uint8_t calculateForwards(struct EnuCoor_i *new_coor, float distanceMeters)
   float sin_heading                 = sinf(ANGLE_FLOAT_OF_BFP(eulerAngles->psi));
   float cos_heading                 = cosf(ANGLE_FLOAT_OF_BFP(eulerAngles->psi));
   // Now determine where to place the waypoint you want to go to
-  new_coor->x                       = pos->x + POS_BFP_OF_REAL(sin_heading * (distanceMeters));
-  new_coor->y                       = pos->y + POS_BFP_OF_REAL(cos_heading * (distanceMeters));
+  new_coor->x                       = pos->x + 0.5 * POS_BFP_OF_REAL(sin_heading * (distanceMeters));
+  new_coor->y                       = pos->y + 0.5 * POS_BFP_OF_REAL(cos_heading * (distanceMeters));
   //VERBOSE_PRINT("Calculated %f m forward position. x: %f  y: %f based on pos(%f, %f) and heading(%f)\n", distanceMeters, POS_FLOAT_OF_BFP(new_coor->x), POS_FLOAT_OF_BFP(new_coor->y), POS_FLOAT_OF_BFP(pos->x), POS_FLOAT_OF_BFP(pos->y), ANGLE_FLOAT_OF_BFP(eulerAngles->psi)*180/M_PI);
   return false;
 }
@@ -215,52 +217,23 @@ uint8_t chooseEducatedIncrementAvoidance()
   }
   return false;
 }
-
+//
 /*
  * Sets the variable 'incrementForAvoidance' randomly positive/negative
  */
 uint8_t chooseRandomIncrementAvoidance()
 {
 
-uint16_t nR = 0, nL = 0;
+  int r = rand() % 2;
+  if (r == 0)
+  {
+    incrementForAvoidance = NORMAL_TURN;
+  }
+  else 
+  {
+    incrementForAvoidance = -NORMAL_TURN;
+  }
 
-
-nR = color_countBr + color_countOr;
-nL = color_countBl + color_countOl;
-
-
-if(color_countOr < thresholdColorCountO && color_countOr < color_countOl )
-{ //&& 
-   //color_countBr<thresholdColorCountB && color_countBr<color_countBl){
-  incrementForAvoidance = NORMAL_TURN;
-} 
-else
-{
-    if(color_countOl < thresholdColorCountO && color_countBl < thresholdColorCountB)
-    {
-      incrementForAvoidance = -NORMAL_TURN;
-    } 
-    else 
-      {
-        if(nR > nL)
-      {
-          incrementForAvoidance = -SHARP_TURN;
-      } 
-      else 
-        {
-          incrementForAvoidance = SHARP_TURN;
-        }
-    }
-}
-/*
-VERBOSE_PRINT("Safe to go forwards = %d \n", heading_decision);
-
-VERBOSE_PRINT("Heading angle = %f \n", incrementForAvoidance);
-
-VERBOSE_PRINT("Orange: left = %d, center = %d,  right =  %d \n", color_countOl, color_countOc, color_countOr);
-
-VERBOSE_PRINT("Black:  left = %d, center = %d,  right =  %d \n", color_countBl, color_countBc, color_countBr);
-*/
   return false;
 }
 
