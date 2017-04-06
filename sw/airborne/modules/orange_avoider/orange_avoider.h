@@ -1,13 +1,16 @@
 /*
- * Copyright (C) Roland Meertens
+ * OBSTACLE AVOIDER
+ * 
  *
- * This file is part of paparazzi
+ * This file is based on the orange_avoider.c by 
+ * Roland Meertens. Modified to take a heading decision
+ * based on the time to contact to the detected features
+ * and orange and black obstacles (as a double check)
+ * 
+ * Currently orange and black filters disabled, and thresholds,
+ * and RandomIncrementForAvoidance() restored to initial situation.
+ * Increment for avoidance based on colors working in branch: OrangeBlackv2_r
  *
- */
-/**
- * @file "modules/orange_avoider/orange_avoider.h"
- * @author Roland Meertens
- * Example on how to use the colours detected to avoid orange pole in the cyberzoo
  */
 
 #ifndef ORANGE_AVOIDER_H

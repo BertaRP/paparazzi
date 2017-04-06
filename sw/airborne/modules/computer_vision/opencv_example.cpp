@@ -1,10 +1,23 @@
-/* IMG_PROCESSING
- 
- This module blablabla finish this introduction
- 
- */
-
-
+/*
+ * IMAGE PROCESSING
+ * 
+ * This module implements the required functions to detect obstacles and 
+ * calculate its time to contact. 
+ * If SPARSE = 1, Lucas-Kanade sparse optical flow is used, and the process is: 
+ *   .- Gets the old image and tracking points (from last frame)
+ *   .- Blurs the image
+ *   .- Converts it to grayscale
+ *   .- Corner detection
+ *   .- Compute optical flow (Lucas-Kanade)
+ *   .- Time to contact
+ *   
+ * If SPARSE = 0, Farneback dense optical flow is used
+ *   .- Gets the old image and tracking points (from last frame)
+ *   .- Canny edge detection
+ *   .- Compute optical flow (Farneback)
+ *   .- Time to contact
+ *
+ */     
 
 #include "opencv_example.h"
 #include <opencv2/video.hpp>
@@ -40,24 +53,26 @@ static const bool detect_shadows = false;
 static const bool harris_detector = false;
 #define K_HARRIS 0.04
 
-// Optic Flow parameters
+// FAST parameters
+#define THRESHOLD_FAST 50
+static const bool nonmax_suppresion = false;
+
+// CANNY parameters
+#define CANNY_CHECK 1
+#define THRESHOLD_CANNY_1 100
+#define THRESHOLD_CANNY_2 200
+
+// Optical Flow parameters
+#define SPARSE 0 // algorithm to use (0 = Farneback 1 = Lucas-Kanade)
+
+// Lucas-Kanade
 #define MAX_LEVEL 1
 #define FLAGS 0
 #define MIN_EIG_THRESHOLD 0.0001
 static const TermCriteria criteria = TermCriteria(TermCriteria::COUNT + TermCriteria::EPS, 10, 0.01); // Termination criteria (iterations, delta)
 static const Size winSize = Size(10,10);
 
-// FAST parameters
-#define THRESHOLD_FAST 50
-static const bool nonmax_suppresion = false;
-
-//CANNY parameters
-#define CANNY_CHECK 1
-#define THRESHOLD_CANNY_1 100
-#define THRESHOLD_CANNY_2 200
-
-#define SPARSE 0
-
+// Farneback
 #define PYR_SCALE 0.5
 #define LEVELS_FARNEBACK 3
 #define WIN_SIZE_FARNEBACK 15
@@ -74,35 +89,31 @@ static const bool nonmax_suppresion = false;
 #define VERBOSE_PRINT(...)
 #endif
 
-vector<Point2f> tracking_pts_0;
-Mat image_old;
-Mat canny_old;
 
+vector<Point2f> tracking_pts_0; // Tracking points of the previous image
+Mat image_old;                  // Previous image
+Mat canny_old;                  // Canny output of the previous image
+        
 void time2contact(vector<Point2f>& tracking_pts_0, vector<Point2f>& tracking_pts, Mat& gray_blurred, double* time_vector);
 void save_times2contact(vector<Point2f>& tracking_pts, vector<uchar>& status, double* time_vector, double* times2contact, int width, int height);
-void times2contactWithFlow(Mat& canny,Mat& flow,double* times2contact, Mat& canny_old);
+void times2contactWithFlow(Mat& flow,double* times2contact, Mat& canny_old);
 
 
 /* =======================================================================================================================================
  =======================================================================================================================================*/
 
-
+/*
+Performs all the image processing operations 
+    img: image from camera
+    width: of the image
+    height: of the image
+    times2contact: pointer to array that stores times to contact
+*/
 void image_pipeline(char* img, int width, int height, double* times2contact)
 {
-    /* Periodic function to compute the optical flow in an outer loop:
-     .- Gets the old image and tracking points (from last frame)
-     .- Blur the image
-     .- Converts it to grayscale
-     .- Create foreground mask (foreground-background segmentation)
-     .- Compute optical flow (returns the moving points in the image)
-     .- Time2contact
-     .- Determine heading direction depending on the time to contact
-     .- Recompute the corners--> save corners and current frame to the output to be used in the next iteration
-     .- Returns the heading decision (e.g. 0: far left, 1: left, 2: center, 3: right, 4: far right)
-     */
 
-    printf("Inside image_pipeline \n");
-    
+    //printf("Inside image_pipeline \n");
+    // Declare variables
     vector<Point2f> tracking_pts;
     vector<uchar> status;
     vector<float> err;
@@ -115,20 +126,22 @@ void image_pipeline(char* img, int width, int height, double* times2contact)
     cvtColor(M,image,CV_YUV2BGR_Y422);
 
 #if SPARSE
+
     // Compute the optical flow in the blurred, grayscale image
     if (tracking_pts_0.size() == 0)
     {
         fill_array_with_minus_one(times2contact, width*height);
     } else {
-        printf("Calculating optical flow\n");
+        //printf("Calculating optical flow\n");
         calcOpticalFlowPyrLK(image_old, image, tracking_pts_0, tracking_pts, status, err, winSize, MAX_LEVEL, criteria, FLAGS, MIN_EIG_THRESHOLD);
+        
         // Time to contact 
         time_vector = (double *)malloc(tracking_pts.size()*sizeof(double));
         time2contact(tracking_pts_0, tracking_pts, image, time_vector);
-        printf("Optical flow calculated and timevector saved\n");
+        //printf("Optical flow calculated and timevector saved\n");
     }
 
-    printf("Saving times2contact\n");
+    //printf("Saving times2contact\n")
     // Convert the time_vector to a matrix
     save_times2contact(tracking_pts, status, time_vector, times2contact, width, height);
     if (tracking_pts_0.size())
@@ -138,17 +151,20 @@ void image_pipeline(char* img, int width, int height, double* times2contact)
 
     vector<Point2i> edges;
     int k = 0;
-    printf("times2contact saved\n");
+
+    //printf("times2contact saved\n");
     // Edges detection --> Output = canny
     Canny(image, canny, THRESHOLD_CANNY_1, THRESHOLD_CANNY_2);
-    printf("Canny done\n");
+    //printf("Canny done\n");
+
     // Find the edges in the output
     findNonZero(canny, edges);
-    printf("Edges found\n");
+    //printf("Edges found\n");
+
     // Allocate the vector of corners
     vector<Point2f> new_corners(edges.size());
 
-    // Get the coordinates of the coordinates
+    // Get the coordinates of the edges
     for (int i = 0; i < canny.cols; ++i)
     {
         for (int j = 0; j < canny.rows; ++j)
@@ -163,36 +179,41 @@ void image_pipeline(char* img, int width, int height, double* times2contact)
             }    
         }
     }
+
+    // Free variables
     tracking_pts_0.clear();
     tracking_pts_0 = new_corners;
     edges.clear();
     status.clear();
     err.clear();
     tracking_pts.clear();
+
 #else
+    // Dense optical flow
     Canny(image, canny, THRESHOLD_CANNY_1, THRESHOLD_CANNY_2);
-    printf("Canny done\n");
+    //printf("Canny done\n");
 
     Mat flow;
     calcOpticalFlowFarneback(canny_old, canny, flow, PYR_SCALE, LEVELS_FARNEBACK, WIN_SIZE_FARNEBACK, IT_FARNEBACK, POLY_N, POLY_SIGMA, 0);
-    printf("Optical flow computed\n");
-    times2contactWithFlow(canny, flow, times2contact, canny_old);
-    printf("times2contact saved\n");
+    //printf("Optical flow computed\n");
+
+    times2contactWithFlow(flow, times2contact, canny_old);
+    //printf("times2contact saved\n");
+
     flow.release();
+
 #endif
-    printf("Saving buffers\n");
+    //printf("Saving buffers\n");
     image_old.release();
     image_old = image;
     canny_old.release();
     canny_old = canny;
-    printf("Buffers saved\n");
+    //printf("Buffers saved\n");
 
     grayscale_opencv_to_yuv422(canny,img);
 
-
-// Release memory
+    // Release memory
     canny.release();
-//    M.release();
     image.release();
 }
 
@@ -201,7 +222,13 @@ void image_pipeline(char* img, int width, int height, double* times2contact)
  =======================================================================================================================================*/
 
 
-// Call this function on the first frame
+/*
+Initializes the image pipeline and performs the image processing 
+operations for the first frame
+    img: image from the front camera
+    height: of the image
+    width: of the image
+*/
 void image_pipeline_init(char* img, int width, int height)
 {
     Mat M(height, width, CV_8UC2, img);
@@ -244,18 +271,25 @@ void image_pipeline_init(char* img, int width, int height)
     canny_old = canny;
     canny.release();
 
-//   M.release();
-     image.release();
+    image.release();
 }
 
+/*
+FOR LUCAS-KANADE ALGORITHM
+Computes the time to contact given the tracking points (corners) of the previous frame and 
+the points returned by the optical flow calculation for the current frame. 
+
+This is the actual time to contact since it is multiplied by the refresh rate of the function (REFRESH_RATE Hz). If this 
+changes, be aware that in "time[idx2] = distance/velocity * REFRESH_RATE", REFRESH_RATE should be changed to the new refresh rate.
+
+    tracking_pts_old: corners/edges from previous frame
+    tracking_pts: points of the current frame where the optical flow is calculated
+    gray_blurred: image converted to grayscale and blurre
+    time_vector: pointer where the time to contact of the selected points is saved
+*/
 void time2contact(vector<Point2f>& tracking_pts_old, vector<Point2f>& tracking_pts, Mat& gray_blurred, double* time_vector)
 {
-/* This function computes the time to contact given the tracking points (corners) of the previous frame and 
- the points returned by the optical flow calculation for the current frame. 
- 
- This is the actual time to contact since it is multiplied by the refresh rate of the function (REFRESH_RATE Hz). If this 
- changes, be aware that in "time[idx2] = distance/velocity * REFRESH_RATE", REFRESH_RATE should be changed to the new refresh rate. 
- */
+
     
     int width  = gray_blurred.cols;             // width of the image
     int height = gray_blurred.rows;             // height of the image
@@ -289,9 +323,17 @@ void time2contact(vector<Point2f>& tracking_pts_old, vector<Point2f>& tracking_p
     }
 }
 
-/* =======================================================================================================================================
- =======================================================================================================================================*/
 
+
+/*
+Function to save the minimum times to conctact in each part of the image
+    tracking_pts: corners/edges in the current frame
+    status: check the output of the optical flow (if the point is valid or not)
+    time_vector: pointer with the times to contact of the corners/edges
+    times2contac: pointer with the times to contact of all the points in the image (-1 if the point is not tracked)
+    width: of the image
+    height: of the image
+*/
 void save_times2contact(vector<Point2f>& tracking_pts, vector<uchar>& status, double *time_vector, double *times2contact, int width, int height)
 {
     // All points are -1 but the ones on tracking pts
@@ -331,15 +373,23 @@ void save_times2contact(vector<Point2f>& tracking_pts, vector<uchar>& status, do
     printf("Loop done\n");
 }
 
-void times2contactWithFlow(Mat& canny, Mat& flow, double* times2contact, Mat& canny_old)
-{
-/* This function computes the time to contact given the tracking points (corners) of the previous frame and 
+
+/*
+ FOR FARNEBACK ALGORITHM
+ This function computes the time to contact given the tracking points (corners) of the previous frame and 
  the points returned by the optical flow calculation for the current frame. 
  
  This is the actual time to contact since it is multiplied by the refresh rate of the function (REFRESH_RATE Hz). If this 
  changes, be aware that in "time[idx2] = distance/velocity * REFRESH_RATE", REFRESH_RATE should be changed to the new refresh rate. 
- */
-    
+
+    flow: optical flow computed by Farneback algorithm
+    times2contact: pointer to the times to contact of the image
+    canny_old: edges in the previous frame
+
+*/
+void times2contactWithFlow(Mat& flow, double* times2contact, Mat& canny_old)
+{
+   
     int width  = canny_old.cols;             // width of the image
     int height = canny_old.rows;             // height of the image
     double center[2];                           // position of the center of the image
@@ -361,7 +411,7 @@ void times2contactWithFlow(Mat& canny, Mat& flow, double* times2contact, Mat& ca
             position_x = center[0] - x;
             position_y = center[1] - y;
 
-            printf("Getting coordenadas\n");
+            printf("Getting coordinates\n");
             Point2f disp = flow.at<Point2f>(x,y);
             printf("x: %d\n", x);
             printf("Columns: %d\n", flow.cols);            
@@ -400,11 +450,16 @@ void times2contactWithFlow(Mat& canny, Mat& flow, double* times2contact, Mat& ca
 }
 
 
-
-/* =======================================================================================================================================
- =======================================================================================================================================*/
+/*
+Fill an array with minus ones (used for the time to contact vector)
+to distinguish the pixels where the optical flow has been calculated from
+the ones that are not taken into account
+    array: pointer to the array to fill with -1
+    npixels: number of pixels in the image
+*/
 
 void fill_array_with_minus_one(double *array, int npixels)
+
 {
     for (int i = 0; i < npixels; ++i)
     {

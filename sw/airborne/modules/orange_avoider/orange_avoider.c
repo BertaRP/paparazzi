@@ -1,14 +1,18 @@
 /*
- * Copyright (C) Roland Meertens
+ * OBSTACLE AVOIDER
+ * 
  *
- * This file is part of paparazzi
+ * This file is based on the orange_avoider.c by 
+ * Roland Meertens. Modified to take a heading decision
+ * based on the time to contact to the detected features
+ * and orange and black obstacles (as a double check)
+ * 
+ * Currently orange and black filters disabled, and thresholds,
+ * and RandomIncrementForAvoidance() restored to initial situation.
+ * Increment for avoidance based on colors working in branch: OrangeBlackv2_r
  *
  */
-/**
- * @file "modules/orange_avoider/orange_avoider.c"
- * @author Roland Meertens
- * Example on how to use the colours detected to avoid orange pole in the cyberzoo
- */
+
 
 #include <time.h>
 #include <math.h>
@@ -22,7 +26,11 @@
 #include "modules/computer_vision/cv_opencvdemo.h"
 
 #define ORANGE_AVOIDER_VERBOSE TRUE
-#define COLOR_AVOIDER_CHECK 0 // Toggle check of orange avoider before corner_avoider
+
+// Trigger to use the orange and black filter as a double check
+#define COLOR_AVOIDER_CHECK 0 // (0 ==> color filter disabled, 1 ==> color filter enabled)
+
+// Degrees for the different types of turn
 #define SHARP_TURN 20
 #define NORMAL_TURN 10
 
@@ -69,7 +77,11 @@ void orange_avoider_init()
   chooseRandomIncrementAvoidance();
 }
 
-
+/*
+Takes a decision based on the time to contact and the black and orange filters 
+(only if COLOR_AVOIDER_CHECK = 1). Calls the corresponding function, which will be 
+the one that moves the waypoints.
+*/
 void take_decision_periodic()
 {
 
@@ -77,7 +89,6 @@ void take_decision_periodic()
   int no_color = orange_avoider_periodic();
 #endif
   heading_decision = corner_avoider_periodic();
-  //VERBOSE_PRINT("Heading_decision: %d \n", heading_decision);
 
 
 #if COLOR_AVOIDER_CHECK
@@ -96,13 +107,14 @@ void take_decision_periodic()
 #endif
 }
 
-
+/*
+Moves the waypoint and modifies the trajectory confidence based on the 
+heading decision (based on corners)
+*/
 void chooseDecisionBasedOnCorners()
 {
-  //VERBOSE_PRINT("Entering: chooseDecisionBasedOnCorners: %d \n", 0);
   float moveDistance = fmin(maxDistance, 0.05 * trajectoryConfidence);
   if(heading_decision==0){
-      //VERBOSE_PRINT("chooseDecisionBasedOnCorners --> heading_decision = 0: %d \n", 0);
       moveWaypointForward(WP_GOAL, moveDistance);
       moveWaypointForward(WP_TRAJECTORY, 1.25 * moveDistance);
       nav_set_heading_towards_waypoint(WP_GOAL);
@@ -110,7 +122,6 @@ void chooseDecisionBasedOnCorners()
       trajectoryConfidence += 1;
   }
   else{
-      //VERBOSE_PRINT("chooseDecisionBasedOnCorners --> heading_decision != 0: %d \n", 0);
       chooseEducatedIncrementAvoidance();
       waypoint_set_here_2d(WP_GOAL);
       waypoint_set_here_2d(WP_TRAJECTORY);
@@ -124,7 +135,10 @@ void chooseDecisionBasedOnCorners()
   }
 }
 
-
+/*
+Moves the waypoint and modifies the trajectory confidence based on the 
+heading decision (based on orange)
+*/
 void chooseDecisionBasedOnOrange()
 {
   chooseRandomIncrementAvoidance();
@@ -144,12 +158,10 @@ void chooseDecisionBasedOnOrange()
  */
 int orange_avoider_periodic()
 {
-  // Check the amount of orange. If this is above a threshold
-  // you want to turn a certain amount of degrees
-  int no_color = color_countOc < thresholdColorCountO;
-  // && color_countBc < thresholdColorCountB;
+  // Check the amount of orange and black pixels. If this is above a threshold
+  // you want to turn a certain amount of degrees 
+    int no_color = color_countOc < thresholdColorCountO; // Black threshold currently disabled!
 
-  //VERBOSE_PRINT("Color_count: %d  threshold: %d no_color: %d \n", color_count, tresholdColorCount, no_color);
   return no_color;
 }
 
@@ -205,6 +217,9 @@ uint8_t moveWaypointForward(uint8_t waypoint, float distanceMeters)
   return false;
 }
 
+/*
+Choose the increment for avoidance depending on the heading decision
+*/
 uint8_t chooseEducatedIncrementAvoidance()
 {
   // Randomly choose CW or CCW avoiding direction
@@ -217,7 +232,7 @@ uint8_t chooseEducatedIncrementAvoidance()
   }
   return false;
 }
-//
+
 /*
  * Sets the variable 'incrementForAvoidance' randomly positive/negative
  */

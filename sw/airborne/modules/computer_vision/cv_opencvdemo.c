@@ -1,23 +1,9 @@
-/* OPTICFLOW_FGBG
- 
- This module blabalbla finish this introduction
- 
- (INIT)
- .- orange_avoider_init
- .- blur (img) --> median_0
- .- gray (median_0) --> gray_blurred_0
- .- fgbgMOG2 (median_0) --> fgmask_0
- .- cornerDetection (gray_blurred_0, fgmask_0) --> tracking_pts_0
- 
- (PERIODIC)
- .- blur (img) --> median
- .- gray (median) --> gray_blurred
- .- opticFlow (gray_blurred, gray_blurred_0, tracking_pts_0) --> tracking_pts
- .- time2contact (tracking_pts, tracking_pts_0) --> optical_flow_count
- 
- .- fgbgMOG2 (median) --> fgmask
- .- cornerDetection (gray_blurred, fgmask) --> tracking_pts_0
- t
+/* CV_OPENCVDEMO.c
+* 
+* Includes the definition of the image pipeline
+* and its initialization for the first frame. 
+* Also, the heading decision is defined in corner_avoider_periodic, 
+* which will be called in orange_avoider.c
 */
 
 #include "modules/computer_vision/cv.h"
@@ -47,6 +33,13 @@ struct image_t* opencv_func(struct image_t* img);
 /* =======================================================================================================================================
  =======================================================================================================================================*/
 
+
+/*
+Calls the image_pipeline function from opencv_example.cpp, which will perform all the 
+image processing operations. 
+	img: image from the front camera
+return img: image after the image processing process 
+*/
 struct image_t* opencv_func(struct image_t* img)
 {
 	if (img->type == IMAGE_YUV422)
@@ -65,7 +58,6 @@ struct image_t* opencv_func(struct image_t* img)
 
 		if (nFrame % FRAME_RATE == 0)
 		{
-			// TODO: Check if necesary to give width and height
     		image_pipeline((char *) img->buf, width, height, times2contact);
 		}
 
@@ -75,9 +67,11 @@ struct image_t* opencv_func(struct image_t* img)
     return img;
 }
 
-/* =======================================================================================================================================
- =======================================================================================================================================*/
 
+
+/*
+Connects the front camera with the function opencv_func
+*/
 void opencvdemo_init(void)
 {
 
@@ -89,24 +83,12 @@ void opencvdemo_init(void)
 }
 
 
-/* Looks at times2contact and reaches a decision on where to move :)
-	times2contact shape: 
- 	|time1  time2  time3  time 4 |
- 	|  .      .      .      .    |
- 	|  .      .      .      .    |
- 	|  .      .      .      .    |
- 	|  .      .      .    time(n)|
-	
-
-	The times are placed in the exact pixels of the image --> make submatrices (I would start with 3) -->
-	find the minimum time of those submatrices --> DIRECTION TO AVOID! 
-	Points where the time to contact is calculated will be labeled as -1.
+/*
+Returns a heading decision taking into account the times to contact
+in the three parts in which the image from camera is divided
 */
 int corner_avoider_periodic(void)
 {
-    // CHANGE THIS HEADING DECISION FOR A DECISION MAKER
-    // (heading_decision = -1 -> left, heading_decision = 0 -> center, heading_decision = 1 -> right)
-    // (heading_decision = -2 -> sharp turn left, heading_decision = 2 -> sharp turn right)
     int heading_decision = 0;
     int nC = 0;
     int nR = 0;
